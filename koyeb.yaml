@@ -16,6 +16,11 @@ services:
         http_path: /
     run:
       command: gunicorn --bind 0.0.0.0:8080 app:app
+    build:
+      commands:
+        - python --version
+        - pip install --upgrade pip
+        - pip install -r requirements.txt
     env:
       - name: FLASK_ENV
         value: production
