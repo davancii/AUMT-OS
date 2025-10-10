@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}{{ member.name }} - Member Details - AUMT OS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar p-0">
+            <div class="p-3">
+                <div class="text-center mb-4">
+                    <img src="{{ url_for('static', filename='AUMT NEW Logo 2025 - Transparent.png') }}" alt="AUMT Logo" style="width: 50px; height: 50px; margin-bottom: 10px;">
+                    <h4 class="text-white mb-1" style="color: var(--aumt-light-gold);">AUMT OS</h4>
+                    <small style="color: var(--aumt-white);">Member Details</small>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link text-white" href="{{ url_for('admin_dashboard') }}">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                    <a class="nav-link text-white active" href="#profile">
+                        <i class="fas fa-user me-2"></i>Profile
+                    </a>
+                    <a class="nav-link text-white" href="#attendance">
+                        <i class="fas fa-calendar-check me-2"></i>Attendance
+                    </a>
+                    <a class="nav-link text-white" href="#points">
+                        <i class="fas fa-star me-2"></i>Points History
+                    </a>
+                </nav>
+            </div>
+            <div class="mt-auto p-3">
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light w-100">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10 main-content p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 style="color: var(--aumt-gold);"><i class="fas fa-user me-2"></i>{{ member.name }} - Member Details</h2>
+                    <p style="color: var(--aumt-dark-brown);" class="mb-0">AUMT Team Member Profile</p>
+                </div>
+                <div class="text-end">
+                    <div class="text-muted">
+                        <i class="fas fa-id-card me-1"></i>Member ID: {{ member.id }}
+                    </div>
+                    <small class="text-muted">Team Member Profile</small>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Member Profile Card -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-user-circle me-2"></i>Profile Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Full Name:</label>
+                                        <p class="form-control-plaintext">{{ member.name }}</p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Email:</label>
+                                        <p class="form-control-plaintext">{{ member.email }}</p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Phone:</label>
+                                        <p class="form-control-plaintext">{{ member.phone }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Department:</label>
+                                        <p class="form-control-plaintext">{{ member.department }}</p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Role:</label>
+                                        <span class="badge {% if member.role == 'admin' %}bg-danger{% else %}bg-primary{% endif %} fs-6">
+                                            {{ member.role }}
+                                        </span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Total Points:</label>
+                                        {% if member.points >= 70 %}
+                                            <span class="badge bg-success fs-6">{{ member.points }}</span>
+                                        {% elif member.points > 50 %}
+                                            <span class="badge bg-warning text-dark fs-6">{{ member.points }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger fs-6">{{ member.points }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <i class="fas fa-user-circle fa-4x text-primary"></i>
+                            </div>
+                            <h5 class="card-title">{{ member.name }}</h5>
+                            <p class="text-muted">{{ member.department }}</p>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#pointsModal">
+                                    <i class="fas fa-star me-2"></i>Update Points
+                                </button>
+                                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#warningModal">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Send Warning
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance History -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-calendar-check me-2"></i>Attendance History</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if attendance %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for record in attendance %}
+                                        <tr>
+                                            <td>{{ record.date }}</td>
+                                            <td>
+                                                <span class="badge {% if record.status == 'present' %}bg-success{% else %}bg-danger{% endif %}">
+                                                    {{ record.status|title }}
+                                                </span>
+                                            </td>
+                                            <td>{{ record.timestamp.strftime('%H:%M:%S') if record.timestamp else '-' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-calendar fa-2x mb-2"></i>
+                                <p>No attendance records found</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Points History -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-star me-2"></i>Points History</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if points_history %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Points Change</th>
+                                            <th>Reason</th>
+                                            <th>Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for record in points_history %}
+                                        <tr>
+                                            <td>{{ record.timestamp.strftime('%Y-%m-%d') if record.timestamp else '-' }}</td>
+                                            <td>
+                                                {% if record.points_change > 0 %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-arrow-up me-1"></i>+{{ record.points_change }}
+                                                    </span>
+                                                {% elif record.points_change < 0 %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-arrow-down me-1"></i>{{ record.points_change }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">
+                                                        <i class="fas fa-minus me-1"></i>{{ record.points_change }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ record.reason }}</td>
+                                            <td>{{ record.timestamp.strftime('%H:%M:%S') if record.timestamp else '-' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-star fa-2x mb-2"></i>
+                                <p>No points history found</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Points Modal -->
+<div class="modal fade" id="pointsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-star me-2"></i>Update Points for {{ member.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('update_points') }}">
+                <div class="modal-body">
+                    <input type="hidden" name="user_id" value="{{ member.id }}">
+                    <div class="mb-3">
+                        <label for="points_change" class="form-label">Points Change</label>
+                        <input type="number" class="form-control" id="points_change" name="points_change" required>
+                        <div class="form-text">Use positive numbers to add points, negative to subtract</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Reason</label>
+                        <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Update Points</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Warning Modal -->
+<div class="modal fade" id="warningModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Send Warning to {{ member.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('send_warning') }}">
+                <div class="modal-body">
+                    <input type="hidden" name="user_id" value="{{ member.id }}">
+                    <div class="mb-3">
+                        <label for="warning_message" class="form-label">Warning Message</label>
+                        <textarea class="form-control" id="warning_message" name="warning_message" rows="4" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Send Warning</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

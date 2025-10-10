@@ -1,0 +1,39 @@
+# Koyeb deployment configuration for AUMT OS
+name: aumt-os
+services:
+  - name: aumt-os-app
+    source:
+      type: git
+      repository: YOUR_GITHUB_REPOSITORY_URL
+      branch: main
+    regions:
+      - fra
+      - iad
+    instance_types:
+      - nano
+    ports:
+      - port: 8080
+        http_path: /
+    env:
+      - name: FLASK_ENV
+        value: production
+      - name: PORT
+        value: "8080"
+      - name: SECRET_KEY
+        secret: true
+      - name: EMAIL_HOST
+        value: "smtp.gmail.com"
+      - name: EMAIL_PORT
+        value: "587"
+      - name: EMAIL_USER
+        secret: true
+      - name: EMAIL_PASSWORD
+        secret: true
+    healthcheck:
+      path: /
+      port: 8080
+      initial_delay: 10
+      interval: 30
+      timeout: 5
+      unhealthy_threshold: 3
+      healthy_threshold: 2

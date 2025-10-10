@@ -1,0 +1,839 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - AUMT OS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar p-0">
+            <div class="p-3">
+                <div class="text-center mb-4">
+                    <img src="{{ url_for('static', filename='AUMT NEW Logo 2025 - Transparent.png') }}" alt="AUMT Logo" style="width: 50px; height: 50px; margin-bottom: 10px;">
+                    <h4 class="text-white mb-1" style="color: var(--aumt-light-gold);">AUMT OS</h4>
+                    <small style="color: var(--aumt-white);">Admin Dashboard</small>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link text-white active" href="#dashboard">
+                        <i class="fas fa-home me-2"></i>Dashboard
+                    </a>
+                    <a class="nav-link text-white" href="#members">
+                        <i class="fas fa-users me-2"></i>Members
+                    </a>
+                    <a class="nav-link text-white" href="#attendance">
+                        <i class="fas fa-calendar-check me-2"></i>Attendance
+                    </a>
+                    <a class="nav-link text-white" href="#points">
+                        <i class="fas fa-star me-2"></i>Points
+                    </a>
+                </nav>
+            </div>
+            <div class="mt-auto p-3">
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light w-100">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10 main-content p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 style="color: var(--aumt-gold);"><i class="fas fa-gavel me-2"></i>Admin Dashboard</h2>
+                    <p style="color: var(--aumt-dark-brown);" class="mb-0">Assiut University Mooting Team Management</p>
+                </div>
+                <div class="text-end">
+                    <div class="text-muted">
+                        <i class="fas fa-user-shield me-1"></i>Welcome, {{ session.user.name }}!
+                    </div>
+                    <small class="text-muted">Administrator Access</small>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Quick Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                            <h5 class="card-title">Total Members</h5>
+                            <h3 class="text-primary">{{ members|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-calendar-check fa-2x text-success mb-2"></i>
+                            <h5 class="card-title">Present Today</h5>
+                            <h3 class="text-success">{{ today_attendance }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-star fa-2x text-warning mb-2"></i>
+                            <h5 class="card-title">Total Points</h5>
+                            <h3 class="text-warning">{{ total_points }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-chart-line fa-2x text-info mb-2"></i>
+                            <h5 class="card-title">Avg Points</h5>
+                            <h3 class="text-info">{{ avg_points }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-tools me-2"></i>Quick Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3 mb-2">
+                                    <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+                                        <i class="fas fa-user-plus me-2"></i>Add Member
+                                    </button>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#bulkAttendanceModal">
+                                        <i class="fas fa-calendar-check me-2"></i>Take Attendance
+                                    </button>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <button class="btn btn-warning w-100" data-bs-toggle="modal" data-bs-target="#bulkPointsModal">
+                                        <i class="fas fa-star me-2"></i>Manage Points
+                                    </button>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#bulkWarningModal">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>Send Warning
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-3 mb-2">
+                                    <a href="{{ url_for('create_admin') }}" class="btn btn-dark w-100">
+                                        <i class="fas fa-user-shield me-2"></i>Create Admin
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Members Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-users me-2"></i>All Members</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Department</th>
+                                    <th>Role</th>
+                                    <th>Points</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in members %}
+                                <tr>
+                                    <td>
+                                        {% if member.rank == 1 %}
+                                            <span class="badge bg-warning text-dark"><i class="fas fa-crown"></i> #{{ member.rank }}</span>
+                                        {% elif member.rank <= 3 %}
+                                            <span class="badge bg-success">#{{ member.rank }}</span>
+                                        {% elif member.rank <= 10 %}
+                                            <span class="badge bg-info">#{{ member.rank }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">#{{ member.rank }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ member.name }}</td>
+                                    <td>{{ member.email }}</td>
+                                    <td>{{ member.department }}</td>
+                                    <td>
+                                        <span class="badge {% if member.role == 'admin' %}bg-danger{% else %}bg-primary{% endif %}">
+                                            {{ member.role }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if member.points >= 70 %}
+                                            <span class="badge bg-success">{{ member.points }}</span>
+                                        {% elif member.points > 50 %}
+                                            <span class="badge bg-warning text-dark">{{ member.points }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ member.points }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('member_details', user_id=member.id) }}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-danger" onclick="removeMember('{{ member.id }}', '{{ member.name }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Member Modal -->
+<div class="modal fade" id="addMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Add New Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_member') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Phone</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="department" class="form-label">Department</label>
+                        <input type="text" class="form-control" id="department" name="department" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role</label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="member">Member</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Member</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Attendance Modal -->
+<div class="modal fade" id="bulkAttendanceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-calendar-check me-2"></i>Take Attendance for Multiple Members</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('bulk_attendance') }}">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="attendance_date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="attendance_date" name="attendance_date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Quick Actions</label>
+                            <div class="btn-group w-100" role="group">
+                                <button type="button" class="btn btn-outline-success" onclick="markAllPresent()">
+                                    <i class="fas fa-check me-1"></i>All Present
+                                </button>
+                                <button type="button" class="btn btn-outline-danger" onclick="markAllAbsent()">
+                                    <i class="fas fa-times me-1"></i>All Absent
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="clearAll()">
+                                    <i class="fas fa-eraser me-1"></i>Clear All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th width="5%">
+                                        <input type="checkbox" id="selectAll" onchange="toggleAllMembers()">
+                                    </th>
+                                    <th width="25%">Name</th>
+                                    <th width="20%">Department</th>
+                                    <th width="15%">Points</th>
+                                    <th width="35%">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in members %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="member-checkbox" value="{{ member.id }}" onchange="updateSelectAll()">
+                                    </td>
+                                    <td>{{ member.name }}</td>
+                                    <td>{{ member.department }}</td>
+                                    <td>
+                                        {% if member.points >= 70 %}
+                                            <span class="badge bg-success">{{ member.points }}</span>
+                                        {% elif member.points > 50 %}
+                                            <span class="badge bg-warning text-dark">{{ member.points }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ member.points }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <input type="radio" class="btn-check" name="status_{{ member.id }}" id="present_{{ member.id }}" value="present" autocomplete="off">
+                                            <label class="btn btn-outline-success" for="present_{{ member.id }}">
+                                                <i class="fas fa-check"></i> Present
+                                            </label>
+                                            
+                                            <input type="radio" class="btn-check" name="status_{{ member.id }}" id="absent_{{ member.id }}" value="absent" autocomplete="off">
+                                            <label class="btn btn-outline-danger" for="absent_{{ member.id }}">
+                                                <i class="fas fa-times"></i> Absent
+                                            </label>
+                                            
+                                            <input type="radio" class="btn-check" name="status_{{ member.id }}" id="not_marked_{{ member.id }}" value="" autocomplete="off" checked>
+                                            <label class="btn btn-outline-secondary" for="not_marked_{{ member.id }}">
+                                                <i class="fas fa-minus"></i> Not Marked
+                                            </label>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Select members and mark their attendance status. Only selected members will be recorded.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-2"></i>Record Attendance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Points Modal -->
+<div class="modal fade" id="bulkPointsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-star me-2"></i>Manage Points for Multiple Members</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('bulk_update_points') }}">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="bulk_points_change" class="form-label">Points Change</label>
+                            <input type="number" class="form-control" id="bulk_points_change" name="points_change" required>
+                            <div class="form-text">Use positive numbers to add points, negative to subtract</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Quick Actions</label>
+                            <div class="btn-group w-100" role="group">
+                                <button type="button" class="btn btn-outline-success" onclick="selectAllMembers()">
+                                    <i class="fas fa-check me-1"></i>Select All
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="clearAllMembers()">
+                                    <i class="fas fa-eraser me-1"></i>Clear All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="bulk_reason" class="form-label">Reason for Points Change</label>
+                        <textarea class="form-control" id="bulk_reason" name="reason" rows="2" required placeholder="Enter reason for points change (e.g., 'Excellent performance in moot court competition')"></textarea>
+                    </div>
+                    
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th width="5%">
+                                        <input type="checkbox" id="selectAllPoints" onchange="toggleAllMembersPoints()">
+                                    </th>
+                                    <th width="25%">Name</th>
+                                    <th width="20%">Department</th>
+                                    <th width="15%">Current Points</th>
+                                    <th width="15%">New Points</th>
+                                    <th width="20%">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in members %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="member-points-checkbox" value="{{ member.id }}" onchange="updateSelectAllPoints()">
+                                    </td>
+                                    <td>{{ member.name }}</td>
+                                    <td>{{ member.department }}</td>
+                                    <td>
+                                        {% if member.points >= 70 %}
+                                            <span class="badge bg-success">{{ member.points }}</span>
+                                        {% elif member.points > 50 %}
+                                            <span class="badge bg-warning text-dark">{{ member.points }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ member.points }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="new-points-{{ member.id }} badge bg-secondary">-</span>
+                                    </td>
+                                    <td>
+                                        <span class="status-{{ member.id }} text-muted">Not Selected</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Select members and enter points change. The new points will be calculated automatically.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning" onclick="prepareBulkPointsForm()">
+                        <i class="fas fa-save me-2"></i>Update Points
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Warning Modal -->
+<div class="modal fade" id="bulkWarningModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Send Warning to Multiple Members</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('bulk_send_warning') }}">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Quick Actions</label>
+                            <div class="btn-group w-100" role="group">
+                                <button type="button" class="btn btn-outline-danger" onclick="selectAllWarningMembers()">
+                                    <i class="fas fa-check me-1"></i>Select All
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="clearAllWarningMembers()">
+                                    <i class="fas fa-eraser me-1"></i>Clear All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="bulk_warning_message" class="form-label">Warning Message</label>
+                        <textarea class="form-control" id="bulk_warning_message" name="warning_message" rows="3" required placeholder="Enter the warning message that will be sent to all selected members..."></textarea>
+                    </div>
+                    
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th width="5%">
+                                        <input type="checkbox" id="selectAllWarnings" onchange="toggleAllWarningMembers()">
+                                    </th>
+                                    <th width="25%">Name</th>
+                                    <th width="25%">Email</th>
+                                    <th width="20%">Department</th>
+                                    <th width="15%">Points</th>
+                                    <th width="10%">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in members %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="member-warning-checkbox" value="{{ member.id }}" onchange="updateSelectAllWarnings()">
+                                    </td>
+                                    <td>{{ member.name }}</td>
+                                    <td>{{ member.email }}</td>
+                                    <td>{{ member.department }}</td>
+                                    <td>
+                                        {% if member.points >= 70 %}
+                                            <span class="badge bg-success">{{ member.points }}</span>
+                                        {% elif member.points > 50 %}
+                                            <span class="badge bg-warning text-dark">{{ member.points }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ member.points }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="warning-status-{{ member.id }} text-muted">Not Selected</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Select members to send warning emails. All selected members will receive the same warning message.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger" onclick="prepareBulkWarningForm()">
+                        <i class="fas fa-paper-plane me-2"></i>Send Warnings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function removeMember(userId, userName) {
+    if (confirm(`Are you sure you want to remove ${userName}? This action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/remove_member/${userId}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Bulk Attendance Functions
+function toggleAllMembers() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.member-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+function updateSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.member-checkbox');
+    const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
+    
+    selectAll.checked = checkboxes.length === checkedBoxes.length;
+    selectAll.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
+}
+
+function markAllPresent() {
+    const checkboxes = document.querySelectorAll('.member-checkbox:checked');
+    checkboxes.forEach(checkbox => {
+        const memberId = checkbox.value;
+        const presentRadio = document.getElementById(`present_${memberId}`);
+        if (presentRadio) {
+            presentRadio.checked = true;
+        }
+    });
+}
+
+function markAllAbsent() {
+    const checkboxes = document.querySelectorAll('.member-checkbox:checked');
+    checkboxes.forEach(checkbox => {
+        const memberId = checkbox.value;
+        const absentRadio = document.getElementById(`absent_${memberId}`);
+        if (absentRadio) {
+            absentRadio.checked = true;
+        }
+    });
+}
+
+function clearAll() {
+    const checkboxes = document.querySelectorAll('.member-checkbox:checked');
+    checkboxes.forEach(checkbox => {
+        const memberId = checkbox.value;
+        const notMarkedRadio = document.getElementById(`not_marked_${memberId}`);
+        if (notMarkedRadio) {
+            notMarkedRadio.checked = true;
+        }
+    });
+}
+
+// Bulk Points Functions
+function toggleAllMembersPoints() {
+    const selectAll = document.getElementById('selectAllPoints');
+    const checkboxes = document.querySelectorAll('.member-points-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+        updateMemberStatus(checkbox);
+    });
+}
+
+function updateSelectAllPoints() {
+    const selectAll = document.getElementById('selectAllPoints');
+    const checkboxes = document.querySelectorAll('.member-points-checkbox');
+    const checkedBoxes = document.querySelectorAll('.member-points-checkbox:checked');
+    
+    selectAll.checked = checkboxes.length === checkedBoxes.length;
+    selectAll.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
+}
+
+function selectAllMembers() {
+    const checkboxes = document.querySelectorAll('.member-points-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+        updateMemberStatus(checkbox);
+    });
+    updateSelectAllPoints();
+}
+
+function clearAllMembers() {
+    const checkboxes = document.querySelectorAll('.member-points-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+        updateMemberStatus(checkbox);
+    });
+    updateSelectAllPoints();
+}
+
+function updateMemberStatus(checkbox) {
+    const memberId = checkbox.value;
+    const statusElement = document.querySelector(`.status-${memberId}`);
+    const newPointsElement = document.querySelector(`.new-points-${memberId}`);
+    
+    if (checkbox.checked) {
+        statusElement.textContent = 'Selected';
+        statusElement.className = `status-${memberId} text-success`;
+        
+        // Calculate new points
+        const pointsChange = document.getElementById('bulk_points_change').value;
+        if (pointsChange) {
+            const currentPoints = parseInt(checkbox.closest('tr').querySelector('.badge').textContent);
+            const newPoints = currentPoints + parseInt(pointsChange);
+            newPointsElement.textContent = newPoints;
+            
+            // Color code new points
+            if (newPoints >= 70) {
+                newPointsElement.className = `new-points-${memberId} badge bg-success`;
+            } else if (newPoints > 50) {
+                newPointsElement.className = `new-points-${memberId} badge bg-warning text-dark`;
+            } else {
+                newPointsElement.className = `new-points-${memberId} badge bg-danger`;
+            }
+        }
+    } else {
+        statusElement.textContent = 'Not Selected';
+        statusElement.className = `status-${memberId} text-muted`;
+        newPointsElement.textContent = '-';
+        newPointsElement.className = `new-points-${memberId} badge bg-secondary`;
+    }
+}
+
+function prepareBulkPointsForm() {
+    // Remove any existing hidden inputs
+    const existingInputs = document.querySelectorAll('input[name^="member_points_"]');
+    existingInputs.forEach(input => input.remove());
+    
+    // Add hidden inputs for selected members
+    const checkedBoxes = document.querySelectorAll('.member-points-checkbox:checked');
+    const form = document.querySelector('form[action="{{ url_for("bulk_update_points") }}"]');
+    
+    checkedBoxes.forEach(checkbox => {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = `member_points_${checkbox.value}`;
+        hiddenInput.value = 'selected';
+        form.appendChild(hiddenInput);
+    });
+    
+    // Validate that at least one member is selected
+    if (checkedBoxes.length === 0) {
+        alert('Please select at least one member to update points.');
+        return false;
+    }
+    
+    // Validate that points change is entered
+    const pointsChange = document.getElementById('bulk_points_change').value;
+    if (!pointsChange) {
+        alert('Please enter a points change value.');
+        return false;
+    }
+    
+    return true;
+}
+
+// Bulk Warning Functions
+function toggleAllWarningMembers() {
+    const selectAll = document.getElementById('selectAllWarnings');
+    const checkboxes = document.querySelectorAll('.member-warning-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+        updateWarningMemberStatus(checkbox);
+    });
+}
+
+function updateSelectAllWarnings() {
+    const selectAll = document.getElementById('selectAllWarnings');
+    const checkboxes = document.querySelectorAll('.member-warning-checkbox');
+    const checkedBoxes = document.querySelectorAll('.member-warning-checkbox:checked');
+    
+    selectAll.checked = checkboxes.length === checkedBoxes.length;
+    selectAll.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
+}
+
+function selectAllWarningMembers() {
+    const checkboxes = document.querySelectorAll('.member-warning-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+        updateWarningMemberStatus(checkbox);
+    });
+    updateSelectAllWarnings();
+}
+
+function clearAllWarningMembers() {
+    const checkboxes = document.querySelectorAll('.member-warning-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+        updateWarningMemberStatus(checkbox);
+    });
+    updateSelectAllWarnings();
+}
+
+function updateWarningMemberStatus(checkbox) {
+    const memberId = checkbox.value;
+    const statusElement = document.querySelector(`.warning-status-${memberId}`);
+    
+    if (checkbox.checked) {
+        statusElement.textContent = 'Selected';
+        statusElement.className = `warning-status-${memberId} text-danger`;
+    } else {
+        statusElement.textContent = 'Not Selected';
+        statusElement.className = `warning-status-${memberId} text-muted`;
+    }
+}
+
+function prepareBulkWarningForm() {
+    // Remove any existing hidden inputs
+    const existingInputs = document.querySelectorAll('input[name^="member_warning_"]');
+    existingInputs.forEach(input => input.remove());
+    
+    // Add hidden inputs for selected members
+    const checkedBoxes = document.querySelectorAll('.member-warning-checkbox:checked');
+    const form = document.querySelector('form[action="{{ url_for("bulk_send_warning") }}"]');
+    
+    checkedBoxes.forEach(checkbox => {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = `member_warning_${checkbox.value}`;
+        hiddenInput.value = 'selected';
+        form.appendChild(hiddenInput);
+    });
+    
+    // Validate that at least one member is selected
+    if (checkedBoxes.length === 0) {
+        alert('Please select at least one member to send warnings.');
+        return false;
+    }
+    
+    // Validate that warning message is entered
+    const warningMessage = document.getElementById('bulk_warning_message').value.trim();
+    if (!warningMessage) {
+        alert('Please enter a warning message.');
+        return false;
+    }
+    
+    return true;
+}
+
+// Update points preview when points change input changes
+document.addEventListener('DOMContentLoaded', function() {
+    const pointsChangeInput = document.getElementById('bulk_points_change');
+    if (pointsChangeInput) {
+        pointsChangeInput.addEventListener('input', function() {
+            const pointsChange = parseInt(this.value) || 0;
+            const checkedBoxes = document.querySelectorAll('.member-points-checkbox:checked');
+            
+            checkedBoxes.forEach(checkbox => {
+                const memberId = checkbox.value;
+                const newPointsElement = document.querySelector(`.new-points-${memberId}`);
+                const currentPoints = parseInt(checkbox.closest('tr').querySelector('.badge').textContent);
+                const newPoints = currentPoints + pointsChange;
+                
+                newPointsElement.textContent = newPoints;
+                
+                // Color code new points
+                if (newPoints >= 70) {
+                    newPointsElement.className = `new-points-${memberId} badge bg-success`;
+                } else if (newPoints > 50) {
+                    newPointsElement.className = `new-points-${memberId} badge bg-warning text-dark`;
+                } else {
+                    newPointsElement.className = `new-points-${memberId} badge bg-danger`;
+                }
+            });
+        });
+    }
+});
+
+// Set today's date as default
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('attendance_date');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = today;
+    }
+});
+</script>
+{% endblock %}

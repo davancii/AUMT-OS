@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Member Dashboard - AUMT OS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar p-0">
+            <div class="p-3">
+                <div class="text-center mb-4">
+                    <img src="{{ url_for('static', filename='AUMT NEW Logo 2025 - Transparent.png') }}" alt="AUMT Logo" style="width: 50px; height: 50px; margin-bottom: 10px;">
+                    <h4 class="text-white mb-1" style="color: var(--aumt-light-gold);">AUMT OS</h4>
+                    <small style="color: var(--aumt-white);">Member Portal</small>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link text-white active" href="#dashboard">
+                        <i class="fas fa-home me-2"></i>Dashboard
+                    </a>
+                    <a class="nav-link text-white" href="#profile">
+                        <i class="fas fa-user me-2"></i>My Profile
+                    </a>
+                    <a class="nav-link text-white" href="#attendance">
+                        <i class="fas fa-calendar-check me-2"></i>Attendance
+                    </a>
+                    <a class="nav-link text-white" href="#points">
+                        <i class="fas fa-star me-2"></i>My Points
+                    </a>
+                </nav>
+            </div>
+            <div class="mt-auto p-3">
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light w-100">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10 main-content p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 style="color: var(--aumt-gold);"><i class="fas fa-user me-2"></i>Member Dashboard</h2>
+                    <p style="color: var(--aumt-dark-brown);" class="mb-0">Your AUMT Team Portal</p>
+                </div>
+                <div class="text-end">
+                    <div class="text-muted">
+                        <i class="fas fa-user me-1"></i>Welcome, {{ user.name }}!
+                    </div>
+                    <small class="text-muted">Team Member Access</small>
+                </div>
+            </div>
+
+            <!-- Profile Card -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-user-circle me-2"></i>My Profile</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Full Name:</label>
+                                        <p class="form-control-plaintext">{{ user.name }}</p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Email:</label>
+                                        <p class="form-control-plaintext">{{ user.email }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Department:</label>
+                                        <p class="form-control-plaintext">{{ user.department }}</p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Phone:</label>
+                                        <p class="form-control-plaintext">{{ user.phone }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            {% if user.points >= 70 %}
+                                <i class="fas fa-star fa-3x text-success mb-3"></i>
+                                <h5 class="card-title">Total Points</h5>
+                                <h2 class="text-success">{{ user.points }}</h2>
+                                <p class="text-muted">Excellent Performance! 🎉</p>
+                                <div class="progress mb-2" style="height: 8px;">
+                                    <div class="progress-bar bg-success" style="width: 100%"></div>
+                                </div>
+                                <small class="text-muted">Maximum Level Achieved!</small>
+                            {% elif user.points > 50 %}
+                                <i class="fas fa-star fa-3x text-warning mb-3"></i>
+                                <h5 class="card-title">Total Points</h5>
+                                <h2 class="text-warning">{{ user.points }}</h2>
+                                <p class="text-muted">Good Progress! Keep Going! 💪</p>
+                                {% set progress = ((user.points - 50) / 20) * 100 %}
+                                <div class="progress mb-2" style="height: 8px;">
+                                    <div class="progress-bar bg-warning" style="width: {{ progress|int }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ 70 - user.points }} points to Excellent!</small>
+                            {% else %}
+                                <i class="fas fa-star fa-3x text-danger mb-3"></i>
+                                <h5 class="card-title">Total Points</h5>
+                                <h2 class="text-danger">{{ user.points }}</h2>
+                                <p class="text-muted">Needs Improvement 📈</p>
+                                {% set progress = (user.points / 50) * 100 %}
+                                <div class="progress mb-2" style="height: 8px;">
+                                    <div class="progress-bar bg-danger" style="width: {{ progress|int }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ 50 - user.points }} points to Good Level!</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-calendar-check fa-2x text-success mb-2"></i>
+                            <h5 class="card-title">Attendance Rate</h5>
+                            <h3 class="text-success">{{ attendance_rate }}%</h3>
+                            <small class="text-muted">Last 30 Days</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-trophy fa-2x text-primary mb-2"></i>
+                            <h5 class="card-title">Rank</h5>
+                            <h3 class="text-primary">#{{ user_rank }}</h3>
+                            <small class="text-muted">Out of {{ total_members }} Members</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-chart-line fa-2x text-info mb-2"></i>
+                            <h5 class="card-title">Total Members</h5>
+                            <h3 class="text-info">{{ total_members }}</h3>
+                            <small class="text-muted">In System</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-history me-2"></i>Recent Points Activity</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if recent_points %}
+                                {% for point in recent_points %}
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        {% if point.points_change > 0 %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-arrow-up me-1"></i>+{{ point.points_change }}
+                                            </span>
+                                        {% elif point.points_change < 0 %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-arrow-down me-1"></i>{{ point.points_change }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-minus me-1"></i>{{ point.points_change }}
+                                            </span>
+                                        {% endif %}
+                                        <small class="text-muted ms-2">{{ point.reason }}</small>
+                                    </div>
+                                    <small class="text-muted">
+                                        {{ point.timestamp.strftime('%m/%d') if point.timestamp else '-' }}
+                                    </small>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                                    <p>No recent activity</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-calendar-alt me-2"></i>Recent Attendance</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if recent_attendance %}
+                                {% for attendance in recent_attendance %}
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <span class="badge {% if attendance.status == 'present' %}bg-success{% else %}bg-danger{% endif %}">
+                                            {{ attendance.status|title }}
+                                        </span>
+                                        <small class="text-muted ms-2">{{ attendance.date }}</small>
+                                    </div>
+                                    <small class="text-muted">
+                                        {{ attendance.timestamp.strftime('%H:%M') if attendance.timestamp else '-' }}
+                                    </small>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-calendar fa-2x mb-2"></i>
+                                    <p>No recent attendance records</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Info -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-info-circle me-2"></i>Quick Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-shield-alt text-success me-3"></i>
+                                        <div>
+                                            <h6 class="mb-0">Account Status</h6>
+                                            <small class="text-muted">Active</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-clock text-info me-3"></i>
+                                        <div>
+                                            <h6 class="mb-0">Last Login</h6>
+                                            <small class="text-muted">Just now</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-envelope text-warning me-3"></i>
+                                        <div>
+                                            <h6 class="mb-0">Notifications</h6>
+                                            <small class="text-muted">0 unread</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
