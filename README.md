@@ -165,6 +165,3 @@ A comprehensive web application built with Flask and Firebase for managing membe
 2. **Email Not Sending**: Check email credentials and enable "Less secure app access" or use App Passwords
 3. **Authentication Errors**: Verify Firebase Authentication is enabled and properly configured
 
-## License
-
-This project is open source and available under the MIT License.
