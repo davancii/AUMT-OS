@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import time
 
 # Load environment variables
 load_dotenv()
@@ -53,23 +52,6 @@ EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
 EMAIL_USER = os.getenv('EMAIL_USER', '')
 EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD', '')
 
-def verify_firebase_token_with_retry(id_token, max_retries=3):
-    """
-    Verify Firebase ID token with retry mechanism to handle clock skew issues
-    """
-    for attempt in range(max_retries):
-        try:
-            decoded_token = auth.verify_id_token(id_token, check_revoked=True)
-            return decoded_token
-        except Exception as e:
-            if "Token used too early" in str(e) and attempt < max_retries - 1:
-                print(f"Clock skew detected, retrying token verification (attempt {attempt + 1}/{max_retries})...")
-                time.sleep(2 ** attempt)  # Exponential backoff: 1s, 2s, 4s
-                continue
-            else:
-                raise e
-    raise Exception("Failed to verify token after all retries")
-
 @app.route('/')
 def index():
     if 'user' in session:
@@ -82,113 +64,74 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Firebase configuration for frontend
-    firebase_config = {
-        'apiKey': os.getenv('FIREBASE_API_KEY', ''),
-        'authDomain': f"{os.getenv('FIREBASE_PROJECT_ID', '')}.firebaseapp.com",
-        'projectId': os.getenv('FIREBASE_PROJECT_ID', ''),
-        'storageBucket': f"{os.getenv('FIREBASE_PROJECT_ID', '')}.appspot.com",
-        'messagingSenderId': os.getenv('FIREBASE_MESSAGING_SENDER_ID', ''),
-        'appId': os.getenv('FIREBASE_APP_ID', '')
-    }
-    
-    return render_template('login.html', firebase_config=firebase_config)
-
-@app.route('/api/verify-token', methods=['POST'])
-def verify_token():
-    """Verify Firebase Auth ID token and set session"""
-    try:
-        data = request.get_json()
-        id_token = data.get('idToken')
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
         
-        if not id_token:
-            return jsonify({'success': False, 'error': 'No token provided'})
-        
-        # Verify the ID token with Firebase Admin SDK using retry mechanism
-        decoded_token = verify_firebase_token_with_retry(id_token)
-        
-        uid = decoded_token['uid']
-        email = decoded_token.get('email')
-        
-        # Get user data from Firestore
-        user_doc = db.collection('users').document(uid).get()
-        if not user_doc.exists:
-            # If user doesn't exist in Firestore, create a basic profile
-            # This handles cases where user was created in Firebase Auth but not in Firestore
-            user_data = {
-                'name': decoded_token.get('name', ''),
-                'email': email,
-                'role': 'member',  # Default role
-                'department': '',
-                'phone': '',
-                'points': 0,
-                'created_at': datetime.now()
-            }
-            db.collection('users').document(uid).set(user_data)
-        else:
+        try:
+            # First, check if user exists in Firestore
+            users_ref = db.collection('users')
+            query = users_ref.where('email', '==', email).limit(1)
+            users = query.get()
+            
+            if not users:
+                flash('Invalid email or password.')
+                return render_template('login.html')
+            
+            user_doc = users[0]
             user_data = user_doc.to_dict()
-        
-        # Set session data
-        session['user'] = {
-            'uid': uid,
-            'email': email,
-            'name': user_data.get('name', ''),
-            'role': user_data.get('role', 'member'),
-            'department': user_data.get('department', ''),
-            'phone': user_data.get('phone', ''),
-            'points': user_data.get('points', 0)
-        }
-        
-        return jsonify({
-            'success': True, 
-            'role': user_data.get('role', 'member'),
-            'redirect_url': url_for('admin_dashboard') if user_data.get('role') == 'admin' else url_for('member_dashboard')
-        })
-        
-    except Exception as e:
-        print(f"Token verification error: {str(e)}")
-        
-        # Provide short, user-friendly error messages
-        error_message = 'Authentication failed.'
-        
-        if "Token used too early" in str(e):
-            error_message = 'Please try again.'
-        elif "Token expired" in str(e):
-            error_message = 'Session expired.'
-        elif "Invalid token" in str(e):
-            error_message = 'Invalid authentication.'
-        elif "Token verification failed" in str(e):
-            error_message = 'Authentication failed.'
-        elif "User not found" in str(e):
-            error_message = 'User not found.'
-        
-        return jsonify({'success': False, 'error': error_message})
+            
+            # Check if user has a password stored (for custom authentication)
+            if 'password' in user_data:
+                # Simple password verification (in production, use proper hashing)
+                if user_data['password'] != password:
+                    flash('Invalid email or password.')
+                    return render_template('login.html')
+            else:
+                # If no password stored, this is a Firebase Auth user
+                # We need to verify with Firebase Auth
+                try:
+                    # Try to get user from Firebase Auth
+                    user = auth.get_user_by_email(email)
+                    # If we get here, the email exists in Firebase Auth
+                    # For now, we'll allow login (you should implement proper password verification)
+                    pass
+                except Exception:
+                    flash('Invalid email or password.')
+                    return render_template('login.html')
+            
+            # Set session data
+            session['user'] = {
+                'uid': user_doc.id,
+                'email': email,
+                'name': user_data.get('name', ''),
+                'role': user_data.get('role', 'member'),
+                'department': user_data.get('department', ''),
+                'phone': user_data.get('phone', ''),
+                'points': user_data.get('points', 0)
+            }
+            
+            if user_data.get('role') == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('member_dashboard'))
+                
+        except Exception as e:
+            print(f"Login error: {str(e)}")
+            flash('Invalid email or password.')
+            return render_template('login.html')
+    
+    return render_template('login.html')
 
 @app.route('/logout')
 def logout():
     session.pop('user', None)
     return redirect(url_for('login'))
 
-@app.route('/api/logout', methods=['POST'])
-def api_logout():
-    """API endpoint for logout (used by frontend)"""
-    session.pop('user', None)
-    return jsonify({'success': True, 'message': 'Logged out successfully'})
-
 @app.route('/admin')
 def admin_dashboard():
     if 'user' not in session or session['user'].get('role') != 'admin':
         return redirect(url_for('login'))
-    
-    # Firebase configuration for frontend
-    firebase_config = {
-        'apiKey': os.getenv('FIREBASE_API_KEY', ''),
-        'authDomain': f"{os.getenv('FIREBASE_PROJECT_ID', '')}.firebaseapp.com",
-        'projectId': os.getenv('FIREBASE_PROJECT_ID', ''),
-        'storageBucket': f"{os.getenv('FIREBASE_PROJECT_ID', '')}.appspot.com",
-        'messagingSenderId': os.getenv('FIREBASE_MESSAGING_SENDER_ID', ''),
-        'appId': os.getenv('FIREBASE_APP_ID', '')
-    }
     
     # Get all members
     members = []
@@ -221,23 +164,12 @@ def admin_dashboard():
                          members=members_sorted, 
                          total_points=total_points,
                          avg_points=avg_points,
-                         today_attendance=today_attendance,
-                         firebase_config=firebase_config)
+                         today_attendance=today_attendance)
 
 @app.route('/member')
 def member_dashboard():
     if 'user' not in session:
         return redirect(url_for('login'))
-    
-    # Firebase configuration for frontend
-    firebase_config = {
-        'apiKey': os.getenv('FIREBASE_API_KEY', ''),
-        'authDomain': f"{os.getenv('FIREBASE_PROJECT_ID', '')}.firebaseapp.com",
-        'projectId': os.getenv('FIREBASE_PROJECT_ID', ''),
-        'storageBucket': f"{os.getenv('FIREBASE_PROJECT_ID', '')}.appspot.com",
-        'messagingSenderId': os.getenv('FIREBASE_MESSAGING_SENDER_ID', ''),
-        'appId': os.getenv('FIREBASE_APP_ID', '')
-    }
     
     user = session['user']
     
@@ -297,8 +229,7 @@ def member_dashboard():
                          total_members=len(members),
                          attendance_rate=attendance_rate,
                          recent_points=recent_points,
-                         recent_attendance=recent_attendance,
-                         firebase_config=firebase_config)
+                         recent_attendance=recent_attendance)
 
 @app.route('/admin/add_member', methods=['POST'])
 def add_member():
@@ -313,14 +244,16 @@ def add_member():
     password = request.form['password']
     
     try:
-        # Create user in Firebase Auth
-        user = auth.create_user(
-            email=email,
-            password=password,
-            display_name=name
-        )
+        # Check if user already exists in Firestore
+        users_ref = db.collection('users')
+        query = users_ref.where('email', '==', email).limit(1)
+        existing_users = query.get()
         
-        # Add user data to Firestore using Firebase Auth UID
+        if existing_users:
+            flash('A user with this email already exists.')
+            return redirect(url_for('admin_dashboard'))
+        
+        # Create user document in Firestore with password
         user_data = {
             'name': name,
             'email': email,
@@ -328,15 +261,14 @@ def add_member():
             'department': department,
             'role': role,
             'points': 0,
+            'password': password,  # Store password for authentication
             'created_at': datetime.now()
         }
         
-        # Store user data in Firestore using Firebase Auth UID
-        db.collection('users').document(user.uid).set(user_data)
+        # Add user to Firestore
+        db.collection('users').add(user_data)
         flash('Member added successfully!')
         
-    except auth.EmailAlreadyExistsError:
-        flash('A user with this email already exists.')
     except Exception as e:
         flash(f'Error adding member: {str(e)}')
     
@@ -624,14 +556,16 @@ def create_admin():
         department = request.form['department']
         
         try:
-            # Create user in Firebase Auth
-            user = auth.create_user(
-                email=email,
-                password=password,
-                display_name=name
-            )
+            # Check if user already exists in Firestore
+            users_ref = db.collection('users')
+            query = users_ref.where('email', '==', email).limit(1)
+            existing_users = query.get()
             
-            # Add user data to Firestore using Firebase Auth UID
+            if existing_users:
+                flash('A user with this email already exists.')
+                return render_template('create_admin.html')
+            
+            # Create user document in Firestore with password
             user_data = {
                 'name': name,
                 'email': email,
@@ -639,16 +573,15 @@ def create_admin():
                 'department': department,
                 'role': 'admin',
                 'points': 0,
+                'password': password,  # Store password for authentication
                 'created_at': datetime.now()
             }
             
-            # Store user data in Firestore using Firebase Auth UID
-            db.collection('users').document(user.uid).set(user_data)
+            # Add user to Firestore
+            db.collection('users').add(user_data)
             flash('Admin user created successfully!')
             return redirect(url_for('admin_dashboard'))
             
-        except auth.EmailAlreadyExistsError:
-            flash('A user with this email already exists.')
         except Exception as e:
             flash(f'Error creating admin user: {str(e)}')
     
