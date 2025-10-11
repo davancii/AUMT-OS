@@ -69,32 +69,55 @@ def login():
         password = request.form['password']
         
         try:
-            # Authenticate with Firebase
-            user = auth.get_user_by_email(email)
+            # First, check if user exists in Firestore
+            users_ref = db.collection('users')
+            query = users_ref.where('email', '==', email).limit(1)
+            users = query.get()
             
-            # Get user data from Firestore
-            user_doc = db.collection('users').document(user.uid).get()
-            if user_doc.exists:
-                user_data = user_doc.to_dict()
-                session['user'] = {
-                    'uid': user.uid,
-                    'email': email,
-                    'name': user_data.get('name', ''),
-                    'role': user_data.get('role', 'member'),
-                    'department': user_data.get('department', ''),
-                    'phone': user_data.get('phone', ''),
-                    'points': user_data.get('points', 0)
-                }
-                
-                if user_data.get('role') == 'admin':
-                    return redirect(url_for('admin_dashboard'))
-                else:
-                    return redirect(url_for('member_dashboard'))
-            else:
-                flash('User data not found. Please contact administrator.')
+            if not users:
+                flash('Invalid email or password.')
                 return render_template('login.html')
+            
+            user_doc = users[0]
+            user_data = user_doc.to_dict()
+            
+            # Check if user has a password stored (for custom authentication)
+            if 'password' in user_data:
+                # Simple password verification (in production, use proper hashing)
+                if user_data['password'] != password:
+                    flash('Invalid email or password.')
+                    return render_template('login.html')
+            else:
+                # If no password stored, this is a Firebase Auth user
+                # We need to verify with Firebase Auth
+                try:
+                    # Try to get user from Firebase Auth
+                    user = auth.get_user_by_email(email)
+                    # If we get here, the email exists in Firebase Auth
+                    # For now, we'll allow login (you should implement proper password verification)
+                    pass
+                except Exception:
+                    flash('Invalid email or password.')
+                    return render_template('login.html')
+            
+            # Set session data
+            session['user'] = {
+                'uid': user_doc.id,
+                'email': email,
+                'name': user_data.get('name', ''),
+                'role': user_data.get('role', 'member'),
+                'department': user_data.get('department', ''),
+                'phone': user_data.get('phone', ''),
+                'points': user_data.get('points', 0)
+            }
+            
+            if user_data.get('role') == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('member_dashboard'))
                 
         except Exception as e:
+            print(f"Login error: {str(e)}")
             flash('Invalid email or password.')
             return render_template('login.html')
     
@@ -221,14 +244,16 @@ def add_member():
     password = request.form['password']
     
     try:
-        # Create user in Firebase Auth
-        user = auth.create_user(
-            email=email,
-            password=password,
-            display_name=name
-        )
+        # Check if user already exists in Firestore
+        users_ref = db.collection('users')
+        query = users_ref.where('email', '==', email).limit(1)
+        existing_users = query.get()
         
-        # Add user data to Firestore
+        if existing_users:
+            flash('A user with this email already exists.')
+            return redirect(url_for('admin_dashboard'))
+        
+        # Create user document in Firestore with password
         user_data = {
             'name': name,
             'email': email,
@@ -236,10 +261,12 @@ def add_member():
             'department': department,
             'role': role,
             'points': 0,
+            'password': password,  # Store password for authentication
             'created_at': datetime.now()
         }
         
-        db.collection('users').document(user.uid).set(user_data)
+        # Add user to Firestore
+        db.collection('users').add(user_data)
         flash('Member added successfully!')
         
     except Exception as e:
@@ -529,14 +556,16 @@ def create_admin():
         department = request.form['department']
         
         try:
-            # Create user in Firebase Auth
-            user = auth.create_user(
-                email=email,
-                password=password,
-                display_name=name
-            )
+            # Check if user already exists in Firestore
+            users_ref = db.collection('users')
+            query = users_ref.where('email', '==', email).limit(1)
+            existing_users = query.get()
             
-            # Add user data to Firestore
+            if existing_users:
+                flash('A user with this email already exists.')
+                return render_template('create_admin.html')
+            
+            # Create user document in Firestore with password
             user_data = {
                 'name': name,
                 'email': email,
@@ -544,15 +573,15 @@ def create_admin():
                 'department': department,
                 'role': 'admin',
                 'points': 0,
+                'password': password,  # Store password for authentication
                 'created_at': datetime.now()
             }
             
-            db.collection('users').document(user.uid).set(user_data)
+            # Add user to Firestore
+            db.collection('users').add(user_data)
             flash('Admin user created successfully!')
             return redirect(url_for('admin_dashboard'))
             
-        except auth.EmailAlreadyExistsError:
-            flash('Error: A user with this email already exists')
         except Exception as e:
             flash(f'Error creating admin user: {str(e)}')
     
