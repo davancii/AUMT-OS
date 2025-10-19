@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+
+{% block title %}Members - AUMT OS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar p-0">
+            <div class="p-3">
+                <div class="text-center mb-4">
+                    <img src="{{ url_for('static', filename='AUMT NEW Logo 2025 - Transparent.png') }}" alt="AUMT Logo" style="width: 50px; height: 50px; margin-bottom: 10px;">
+                    <h4 class="text-white mb-1" style="color: var(--aumt-light-gold);">AUMT OS</h4>
+                    <small style="color: var(--aumt-white);">Members Management</small>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link text-white" href="{{ url_for('admin_dashboard') }}">
+                        <i class="fas fa-home me-2"></i>Dashboard
+                    </a>
+                    <a class="nav-link text-white active" href="{{ url_for('members_page') }}">
+                        <i class="fas fa-users me-2"></i>Members
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('invite_codes') }}">
+                        <i class="fas fa-ticket-alt me-2"></i>Invite Codes
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('admin_dashboard') }}#attendance">
+                        <i class="fas fa-calendar-check me-2"></i>Attendance
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('admin_dashboard') }}#points">
+                        <i class="fas fa-star me-2"></i>Points
+                    </a>
+                </nav>
+            </div>
+            <div class="mt-auto p-3">
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light w-100">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10 main-content p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 style="color: var(--aumt-gold);"><i class="fas fa-users me-2"></i>All Members</h2>
+                    <p style="color: var(--aumt-dark-brown);" class="mb-0">AUMT Team Members Management</p>
+                </div>
+                <div class="text-end">
+                    <div class="text-muted">
+                        <i class="fas fa-user-shield me-1"></i>Welcome, {{ session.user.name }}!
+                    </div>
+                    <small class="text-muted">Administrator Access</small>
+                </div>
+            </div>
+
+            <!-- Search and Stats Bar -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-body">
+                            <form method="GET" action="{{ url_for('members_page') }}" class="d-flex">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" name="search" 
+                                           placeholder="Search members by name or email..." 
+                                           value="{{ search_query }}" 
+                                           id="searchInput">
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="fas fa-search me-1"></i>Search
+                                    </button>
+                                    {% if search_query %}
+                                    <a href="{{ url_for('members_page') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-1"></i>Clear
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                            <h5 class="card-title">Total Members</h5>
+                            <h3 class="text-primary">{{ members|length }}</h3>
+                            {% if search_query %}
+                            <small class="text-muted">Filtered Results</small>
+                            {% else %}
+                            <small class="text-muted">All Members</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Members Table -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-users me-2"></i>Members List</h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+                            <i class="fas fa-user-plus me-1"></i>Add Member
+                        </button>
+                        <a href="{{ url_for('export_members') }}" class="btn btn-sm btn-primary" id="exportBtn" onclick="showExportLoading()">
+                            <i class="fas fa-download me-1"></i>Export CSV
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if members %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="membersTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th width="8%">Rank</th>
+                                    <th width="18%">Name</th>
+                                    <th width="22%">Email</th>
+                                    <th width="12%">Department</th>
+                                    <th width="12%">Academic Year</th>
+                                    <th width="8%">Role</th>
+                                    <th width="8%">Points</th>
+                                    <th width="12%">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in members %}
+                                <tr>
+                                    <td>
+                                        {% if member.rank == 1 %}
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-crown me-1"></i>#{{ member.rank }}
+                                            </span>
+                                        {% elif member.rank <= 3 %}
+                                            <span class="badge bg-success">#{{ member.rank }}</span>
+                                        {% elif member.rank <= 10 %}
+                                            <span class="badge bg-info">#{{ member.rank }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">#{{ member.rank }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle me-2">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{ member.name }}</div>
+                                                <small class="text-muted">{{ member.phone }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-envelope me-2 text-muted"></i>
+                                            <span>{{ member.email }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ member.department }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info text-dark">
+                                            <i class="fas fa-graduation-cap me-1"></i>{{ member.academic_year or 'N/A' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if member.role == 'admin' %}bg-danger{% elif member.role == 'hr' %}bg-warning text-dark{% else %}bg-primary{% endif %}">
+                                            <i class="fas fa-{% if member.role == 'admin' %}shield-alt{% elif member.role == 'hr' %}user-tie{% else %}user{% endif %} me-1"></i>
+                                            {{ member.role|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if member.points >= 70 %}
+                                            <span class="badge bg-success fs-6">
+                                                <i class="fas fa-star me-1"></i>{{ member.points }}
+                                            </span>
+                                        {% elif member.points > 50 %}
+                                            <span class="badge bg-warning text-dark fs-6">
+                                                <i class="fas fa-star me-1"></i>{{ member.points }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger fs-6">
+                                                <i class="fas fa-star me-1"></i>{{ member.points }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('member_details', user_id=member.id) }}" 
+                                               class="btn btn-outline-info" 
+                                               title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <button class="btn btn-outline-warning" 
+                                                    onclick="quickUpdatePoints('{{ member.id }}', '{{ member.name }}', {{ member.points }})"
+                                                    title="Update Points">
+                                                <i class="fas fa-star"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" 
+                                                    onclick="removeMember('{{ member.id }}', '{{ member.name }}')"
+                                                    title="Remove Member">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        {% if search_query %}
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No members found</h5>
+                        <p class="text-muted">No members match your search criteria: "{{ search_query }}"</p>
+                        <a href="{{ url_for('members_page') }}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-2"></i>View All Members
+                        </a>
+                        {% else %}
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No members found</h5>
+                        <p class="text-muted">Start by adding your first team member</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+                            <i class="fas fa-user-plus me-2"></i>Add First Member
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Member Modal -->
+<div class="modal fade" id="addMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Add New Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_member') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Phone</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="department" class="form-label">Department</label>
+                        <input type="text" class="form-control" id="department" name="department" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="academic_year" class="form-label">Academic Year</label>
+                        <select class="form-select" id="academic_year" name="academic_year" required>
+                            <option value="">Select Academic Year</option>
+                            <option value="First Year">First Year</option>
+                            <option value="Second Year">Second Year</option>
+                            <option value="Third Year">Third Year</option>
+                            <option value="Fourth Year">Fourth Year</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role</label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="member">Member</option>
+                            <option value="hr">HR</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Member</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Update Points Modal -->
+<div class="modal fade" id="quickPointsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-star me-2"></i>Quick Update Points</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('update_points') }}">
+                <div class="modal-body">
+                    <input type="hidden" name="user_id" id="quick_user_id">
+                    <div class="mb-3">
+                        <label class="form-label">Member</label>
+                        <p class="form-control-plaintext" id="quick_member_name"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Current Points</label>
+                        <p class="form-control-plaintext" id="quick_current_points"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quick_points_change" class="form-label">Points Change</label>
+                        <input type="number" class="form-control" id="quick_points_change" name="points_change" required>
+                        <div class="form-text">Use positive numbers to add points, negative to subtract</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quick_reason" class="form-label">Reason</label>
+                        <textarea class="form-control" id="quick_reason" name="reason" rows="2" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Update Points</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--aumt-gold) 0%, var(--aumt-dark-gold) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+}
+
+.table tbody tr:hover {
+    background-color: var(--aumt-light-cream);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+#searchInput:focus {
+    border-color: var(--aumt-gold);
+    box-shadow: 0 0 0 0.2rem rgba(184, 134, 11, 0.15);
+}
+</style>
+
+<script>
+function removeMember(userId, userName) {
+    if (confirm(`Are you sure you want to remove ${userName}? This action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/remove_member/${userId}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function quickUpdatePoints(userId, userName, currentPoints) {
+    document.getElementById('quick_user_id').value = userId;
+    document.getElementById('quick_member_name').textContent = userName;
+    document.getElementById('quick_current_points').textContent = currentPoints;
+    document.getElementById('quick_points_change').value = '';
+    document.getElementById('quick_reason').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('quickPointsModal'));
+    modal.show();
+}
+
+// Export functionality is now handled server-side via the export_members route
+function showExportLoading() {
+    const exportBtn = document.getElementById('exportBtn');
+    const originalHTML = exportBtn.innerHTML;
+    
+    // Show loading state
+    exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Exporting...';
+    exportBtn.classList.remove('btn-primary');
+    exportBtn.classList.add('btn-secondary');
+    exportBtn.style.pointerEvents = 'none';
+    
+    // Reset after a delay (the download will start automatically)
+    setTimeout(() => {
+        exportBtn.innerHTML = originalHTML;
+        exportBtn.classList.remove('btn-secondary');
+        exportBtn.classList.add('btn-primary');
+        exportBtn.style.pointerEvents = 'auto';
+    }, 3000);
+}
+
+// Auto-focus search input
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput && !searchInput.value) {
+        searchInput.focus();
+    }
+});
+
+// Real-time search (optional - for future enhancement)
+// document.getElementById('searchInput').addEventListener('input', function() {
+//     // Could implement real-time search here
+// });
+</script>
+{% endblock %}

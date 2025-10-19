@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block title %}Invite Codes - AUMT OS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar p-0">
+            <div class="p-3">
+                <div class="text-center mb-4">
+                    <img src="{{ url_for('static', filename='AUMT NEW Logo 2025 - Transparent.png') }}" alt="AUMT Logo" style="width: 50px; height: 50px; margin-bottom: 10px;">
+                    <h4 class="text-white mb-1" style="color: var(--aumt-light-gold);">AUMT OS</h4>
+                    <small style="color: var(--aumt-white);">Invite Management</small>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link text-white" href="{{ url_for('admin_dashboard') }}">
+                        <i class="fas fa-home me-2"></i>Dashboard
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('members_page') }}">
+                        <i class="fas fa-users me-2"></i>Members
+                    </a>
+                    <a class="nav-link text-white active" href="{{ url_for('invite_codes') }}">
+                        <i class="fas fa-ticket-alt me-2"></i>Invite Codes
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('admin_dashboard') }}#attendance">
+                        <i class="fas fa-calendar-check me-2"></i>Attendance
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('admin_dashboard') }}#points">
+                        <i class="fas fa-star me-2"></i>Points
+                    </a>
+                </nav>
+            </div>
+            <div class="mt-auto p-3">
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light w-100">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10 main-content p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 style="color: var(--aumt-gold);"><i class="fas fa-ticket-alt me-2"></i>Invite Codes Management</h2>
+                    <p style="color: var(--aumt-dark-brown);" class="mb-0">Generate and manage team invitation codes</p>
+                </div>
+                <div class="text-end">
+                    <div class="text-muted">
+                        <i class="fas fa-user-shield me-1"></i>Welcome, {{ session.user.name }}!
+                    </div>
+                    <small class="text-muted">Administrator Access</small>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Generate Code Section -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-plus-circle me-2"></i>Generate Invite Codes</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">
+                                Create invite codes that members can use to sign up for the AUMT team. 
+                                Each code can only be used once. You can generate multiple codes at once.
+                            </p>
+                            <form method="POST" action="{{ url_for('generate_invite_code_route') }}">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="num_codes" class="form-label">Number of Codes</label>
+                                            <input type="number" class="form-control" id="num_codes" name="num_codes" 
+                                                   value="1" min="1" max="50" required>
+                                            <div class="form-text">Maximum 50 codes at once</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Quick Options</label>
+                                            <div class="btn-group w-100" role="group">
+                                                <button type="button" class="btn btn-outline-secondary" onclick="setNumCodes(1)">
+                                                    1 Code
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary" onclick="setNumCodes(5)">
+                                                    5 Codes
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary" onclick="setNumCodes(10)">
+                                                    10 Codes
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary" onclick="setNumCodes(25)">
+                                                    25 Codes
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-ticket-alt me-2"></i>Generate Codes
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-ticket-alt fa-2x text-primary mb-2"></i>
+                            <h5 class="card-title">Total Codes</h5>
+                            <h3 class="text-primary">{{ invite_codes|length }}</h3>
+                            <small class="text-muted">Generated Codes</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invite Codes Table -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-list me-2"></i>All Invite Codes</h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-info" onclick="copyAllCodes()">
+                            <i class="fas fa-copy me-1"></i>Copy All
+                        </button>
+                        <button class="btn btn-sm btn-success" onclick="exportCodes()">
+                            <i class="fas fa-download me-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if invite_codes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="codesTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th width="15%">Code</th>
+                                    <th width="15%">Status</th>
+                                    <th width="20%">Created</th>
+                                    <th width="20%">Used By</th>
+                                    <th width="15%">Used At</th>
+                                    <th width="15%">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for code in invite_codes %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <code class="bg-light p-2 rounded me-2" id="code-{{ code.id }}">{{ code.code }}</code>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyCode('{{ code.code }}')" title="Copy Code">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if code.used %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-check-circle me-1"></i>Used
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-clock me-1"></i>Available
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-calendar me-2 text-muted"></i>
+                                            <div>
+                                                <div class="fw-bold">{{ code.created_at.strftime('%Y-%m-%d') if code.created_at else '-' }}</div>
+                                                <small class="text-muted">{{ code.created_at.strftime('%H:%M') if code.created_at else '-' }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if code.used_by %}
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-user me-2 text-muted"></i>
+                                                <span>{{ code.used_by }}</span>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if code.used_at %}
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-clock me-2 text-muted"></i>
+                                                <div>
+                                                    <div class="fw-bold">{{ code.used_at.strftime('%Y-%m-%d') if code.used_at else '-' }}</div>
+                                                    <small class="text-muted">{{ code.used_at.strftime('%H:%M') if code.used_at else '-' }}</small>
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if not code.used %}
+                                        <button class="btn btn-sm btn-danger" onclick="deleteCode('{{ code.id }}', '{{ code.code }}')" title="Delete Code">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-ticket-alt fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No invite codes found</h5>
+                        <p class="text-muted">Generate your first invite code to start inviting team members</p>
+                        <form method="POST" action="{{ url_for('generate_invite_code_route') }}" class="d-inline">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Generate First Code
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-info-circle me-2"></i>How to Use Invite Codes</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="step-number me-3">1</div>
+                                        <div>
+                                            <h6 class="mb-0">Generate Code</h6>
+                                            <small class="text-muted">Click "Generate Invite Code" to create a new code</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="step-number me-3">2</div>
+                                        <div>
+                                            <h6 class="mb-0">Share Code</h6>
+                                            <small class="text-muted">Share the code with potential team members</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="step-number me-3">3</div>
+                                        <div>
+                                            <h6 class="mb-0">Member Signs Up</h6>
+                                            <small class="text-muted">Member uses code to create account</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.step-number {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--aumt-gold) 0%, var(--aumt-dark-gold) 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.table tbody tr:hover {
+    background-color: var(--aumt-light-cream);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+code {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--aumt-gold);
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+</style>
+
+<script>
+function copyCode(code) {
+    navigator.clipboard.writeText(code).then(function() {
+        // Show success feedback
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        button.classList.remove('btn-outline-secondary');
+        button.classList.add('btn-success');
+        
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-secondary');
+        }, 2000);
+    });
+}
+
+function copyAllCodes() {
+    const codes = [];
+    document.querySelectorAll('code').forEach(code => {
+        if (code.textContent.trim()) {
+            codes.push(code.textContent.trim());
+        }
+    });
+    
+    navigator.clipboard.writeText(codes.join('\n')).then(function() {
+        alert('All codes copied to clipboard!');
+    });
+}
+
+function exportCodes() {
+    const table = document.getElementById('codesTable');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    let csv = 'Code,Status,Created,Used By,Used At\n';
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const code = cells[0].querySelector('code').textContent.trim();
+        const status = cells[1].textContent.trim();
+        const created = cells[2].textContent.trim().replace(/\n/g, ' ');
+        const usedBy = cells[3].textContent.trim();
+        const usedAt = cells[4].textContent.trim().replace(/\n/g, ' ');
+        
+        csv += `"${code}","${status}","${created}","${usedBy}","${usedAt}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'aumt-invite-codes.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+function deleteCode(codeId, code) {
+    if (confirm(`Are you sure you want to delete invite code "${code}"? This action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/delete_invite_code/${codeId}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function setNumCodes(num) {
+    document.getElementById('num_codes').value = num;
+}
+</script>
+{% endblock %}

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Dashboard - AUMT OS{% endblock %}
+{% block title %}HR Dashboard - AUMT OS{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -11,17 +11,14 @@
                 <div class="text-center mb-4">
                     <img src="{{ url_for('static', filename='AUMT NEW Logo 2025 - Transparent.png') }}" alt="AUMT Logo" style="width: 50px; height: 50px; margin-bottom: 10px;">
                     <h4 class="text-white mb-1" style="color: var(--aumt-light-gold);">AUMT OS</h4>
-                    <small style="color: var(--aumt-white);">Admin Dashboard</small>
+                    <small style="color: var(--aumt-white);">HR Dashboard</small>
                 </div>
                 <nav class="nav flex-column">
                     <a class="nav-link text-white active" href="#dashboard">
                         <i class="fas fa-home me-2"></i>Dashboard
                     </a>
-                    <a class="nav-link text-white" href="{{ url_for('members_page') }}">
+                    <a class="nav-link text-white" href="#members">
                         <i class="fas fa-users me-2"></i>Members
-                    </a>
-                    <a class="nav-link text-white" href="{{ url_for('invite_codes') }}">
-                        <i class="fas fa-ticket-alt me-2"></i>Invite Codes
                     </a>
                     <a class="nav-link text-white" href="#attendance">
                         <i class="fas fa-calendar-check me-2"></i>Attendance
@@ -42,14 +39,14 @@
         <div class="col-md-9 col-lg-10 main-content p-4">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 style="color: var(--aumt-gold);"><i class="fas fa-gavel me-2"></i>Admin Dashboard</h2>
-                    <p style="color: var(--aumt-dark-brown);" class="mb-0">Assiut University Mooting Team Management</p>
+                    <h2 style="color: var(--aumt-gold);"><i class="fas fa-user-tie me-2"></i>HR Dashboard</h2>
+                    <p style="color: var(--aumt-dark-brown);" class="mb-0">Human Resources Management</p>
                 </div>
                 <div class="text-end">
                     <div class="text-muted">
-                        <i class="fas fa-user-shield me-1"></i>Welcome, {{ session.user.name }}!
+                        <i class="fas fa-user-tie me-1"></i>Welcome, {{ session.user.name }}!
                     </div>
-                    <small class="text-muted">Administrator Access</small>
+                    <small class="text-muted">HR Access</small>
                 </div>
             </div>
 
@@ -109,36 +106,24 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h5><i class="fas fa-tools me-2"></i>Quick Actions</h5>
+                            <h5><i class="fas fa-tools me-2"></i>HR Actions</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-3 mb-2">
-                                    <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#addMemberModal">
-                                        <i class="fas fa-user-plus me-2"></i>Add Member
-                                    </button>
-                                </div>
-                                <div class="col-md-3 mb-2">
+                                <div class="col-md-4 mb-2">
                                     <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#bulkAttendanceModal">
                                         <i class="fas fa-calendar-check me-2"></i>Take Attendance
                                     </button>
                                 </div>
-                                <div class="col-md-3 mb-2">
+                                <div class="col-md-4 mb-2">
                                     <button class="btn btn-warning w-100" data-bs-toggle="modal" data-bs-target="#bulkPointsModal">
                                         <i class="fas fa-star me-2"></i>Manage Points
                                     </button>
                                 </div>
-                                <div class="col-md-3 mb-2">
+                                <div class="col-md-4 mb-2">
                                     <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#bulkWarningModal">
                                         <i class="fas fa-exclamation-triangle me-2"></i>Send Warning
                                     </button>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-3 mb-2">
-                                    <a href="{{ url_for('create_admin') }}" class="btn btn-dark w-100">
-                                        <i class="fas fa-user-shield me-2"></i>Create Admin
-                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -206,9 +191,6 @@
                                         <a href="{{ url_for('member_details', user_id=member.id) }}" class="btn btn-sm btn-info">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-danger" onclick="removeMember('{{ member.id }}', '{{ member.name }}')">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -217,69 +199,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Member Modal -->
-<div class="modal fade" id="addMemberModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Add New Member</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="{{ url_for('add_member') }}">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Full Name</label>
-                        <input type="text" class="form-control" id="name" name="name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="phone" class="form-label">Phone</label>
-                        <input type="tel" class="form-control" id="phone" name="phone" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="department" class="form-label">Department</label>
-                        <input type="text" class="form-control" id="department" name="department" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="academic_year" class="form-label">Academic Year</label>
-                        <select class="form-select" id="academic_year" name="academic_year" required>
-                            <option value="">Select Academic Year</option>
-                            <option value="First Year">First Year</option>
-                            <option value="Second Year">Second Year</option>
-                            <option value="Third Year">Third Year</option>
-                            <option value="Fourth Year">Fourth Year</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="role" class="form-label">Role</label>
-                        <select class="form-select" id="role" name="role" required>
-                            <option value="member">Member</option>
-                            <option value="hr">HR</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="password" name="password" required>
-                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
-                                <i class="fas fa-eye" id="toggleIcon"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Member</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -573,15 +492,6 @@
 
 {% block scripts %}
 <script>
-function removeMember(userId, userName) {
-    if (confirm(`Are you sure you want to remove ${userName}? This action cannot be undone.`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/remove_member/${userId}`;
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
 
 // Bulk Attendance Functions
 function toggleAllMembers() {
@@ -858,27 +768,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateInput = document.getElementById('attendance_date');
     if (dateInput && !dateInput.value) {
         dateInput.value = today;
-    }
-});
-
-// Password toggle functionality for Add Member form
-document.addEventListener('DOMContentLoaded', function() {
-    const togglePassword = document.getElementById('togglePassword');
-    const passwordInput = document.getElementById('password');
-    const toggleIcon = document.getElementById('toggleIcon');
-    
-    if (togglePassword && passwordInput && toggleIcon) {
-        togglePassword.addEventListener('click', function() {
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleIcon.classList.remove('fa-eye');
-                toggleIcon.classList.add('fa-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                toggleIcon.classList.remove('fa-eye-slash');
-                toggleIcon.classList.add('fa-eye');
-            }
-        });
     }
 });
 </script>

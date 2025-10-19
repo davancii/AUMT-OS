@@ -95,7 +95,12 @@
                                 
                                 <div class="mb-3">
                                     <label for="password" class="form-label">Password *</label>
-                                    <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                                        <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                            <i class="fas fa-eye" id="toggleIcon"></i>
+                                        </button>
+                                    </div>
                                     <div class="form-text">Password must be at least 6 characters long</div>
                                 </div>
                                 
@@ -120,4 +125,27 @@
         </div>
     </div>
 </div>
+
+<script>
+// Password toggle functionality for Create Admin form
+document.addEventListener('DOMContentLoaded', function() {
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (togglePassword && passwordInput && toggleIcon) {
+        togglePassword.addEventListener('click', function() {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

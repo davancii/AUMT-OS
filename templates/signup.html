@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - AUMT OS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <div class="col-md-6 d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, var(--aumt-dark-brown) 0%, var(--aumt-brown) 100%);">
+            <div class="text-center text-white">
+                <div class="mb-4">
+                    <img src="static/AUMT NEW Logo 2025 - Transparent.png" alt="AUMT Logo" style="width: 120px; height: 120px; margin-bottom: 20px;">
+                </div>
+                <h1 class="display-4 mb-4" style="color: var(--aumt-light-gold);">Join AUMT</h1>
+                <p class="lead" style="color: var(--aumt-white);">Assiut University Mooting Team</p>
+                <p class="lead" style="color: var(--aumt-white);">English Law Program</p>
+                <div class="mt-5">
+                    <i class="fas fa-user-plus fa-3x mb-3" style="color: var(--aumt-light-gold);"></i>
+                    <h3 style="color: var(--aumt-light-gold);">Create Your Account</h3>
+                    <p>Join the AUMT team with your invite code</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 d-flex align-items-center justify-content-center">
+            <div class="card w-100" style="max-width: 500px;">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-user-plus fa-2x text-primary mb-3"></i>
+                        <h2 class="card-title">Create Account</h2>
+                        <p class="text-muted">Join the AUMT team with your invite code</p>
+                    </div>
+                    
+                    {% with messages = get_flashed_messages() %}
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Full Name *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                        <input type="text" class="form-control" id="name" name="name" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email Address *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                        <input type="email" class="form-control" id="email" name="email" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Phone Number *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                        <input type="tel" class="form-control" id="phone" name="phone" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="department" class="form-label">Department *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-building"></i></span>
+                                        <input type="text" class="form-control" id="department" name="department" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="academic_year" class="form-label">Academic Year *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-graduation-cap"></i></span>
+                                <select class="form-select" id="academic_year" name="academic_year" required>
+                                    <option value="">Select Academic Year</option>
+                                    <option value="First Year">First Year</option>
+                                    <option value="Second Year">Second Year</option>
+                                    <option value="Third Year">Third Year</option>
+                                    <option value="Fourth Year">Fourth Year</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword" onclick="togglePasswordVisibility()">
+                                    <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Password must be at least 6 characters long</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="invite_code" class="form-label">Invite Code *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-ticket-alt"></i></span>
+                                <input type="text" class="form-control" id="invite_code" name="invite_code" required 
+                                       placeholder="Enter your invite code (e.g., AUMT-A7B9C2D1)" style="text-transform: uppercase;">
+                                <button class="btn btn-outline-info" type="button" onclick="validateInviteCode()" id="validateBtn">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Get your invite code from an AUMT administrator
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            <i class="fas fa-user-plus me-2"></i>Create Account
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-4">
+                        <p class="text-muted">
+                            Already have an account? 
+                            <a href="{{ url_for('login') }}" class="text-primary fw-bold">Sign In</a>
+                        </p>
+                        <div class="mt-3 pt-3" style="border-top: 1px solid var(--aumt-border);">
+                            <small class="text-muted">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                Secure registration powered by Firebase
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                <i class="fas fa-code me-1"></i>
+                                Made by <a href="https://www.linkedin.com/in/yousefhosam/" target="_blank" class="text-decoration-none fw-bold" style="color: var(--aumt-gold);">Yousef Hosam</a>
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                <i class="fas fa-user-tie me-1"></i>
+                                Vice President Head of Operations
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('passwordToggleIcon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+
+function validateInviteCode() {
+    const inviteCode = document.getElementById('invite_code').value.trim().toUpperCase();
+    const validateBtn = document.getElementById('validateBtn');
+    
+    if (!inviteCode) {
+        alert('Please enter an invite code first.');
+        return;
+    }
+    
+    // Show loading state
+    const originalHTML = validateBtn.innerHTML;
+    validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    validateBtn.disabled = true;
+    
+    // Simulate validation (in real implementation, you'd make an AJAX call)
+    // For now, we'll just show a message
+    setTimeout(() => {
+        validateBtn.innerHTML = '<i class="fas fa-check"></i>';
+        validateBtn.classList.remove('btn-outline-info');
+        validateBtn.classList.add('btn-success');
+        
+        // Reset after 3 seconds
+        setTimeout(() => {
+            validateBtn.innerHTML = originalHTML;
+            validateBtn.classList.remove('btn-success');
+            validateBtn.classList.add('btn-outline-info');
+            validateBtn.disabled = false;
+        }, 3000);
+    }, 1000);
+}
+
+// Auto-uppercase invite code input
+document.getElementById('invite_code').addEventListener('input', function() {
+    this.value = this.value.toUpperCase();
+});
+
+// Form validation
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const inviteCodeInput = document.getElementById('invite_code');
+    
+    form.addEventListener('submit', function(e) {
+        const inviteCode = inviteCodeInput.value.trim();
+        
+        if (!inviteCode) {
+            e.preventDefault();
+            alert('Please enter an invite code.');
+            inviteCodeInput.focus();
+            return;
+        }
+        
+        if (inviteCode.length < 13) {
+            e.preventDefault();
+            alert('Invite code must be in format AUMT-XXXXXXXX (e.g., AUMT-A7B9C2D1).');
+            inviteCodeInput.focus();
+            return;
+        }
+        
+        if (!inviteCode.startsWith('AUMT-')) {
+            e.preventDefault();
+            alert('Invite code must start with "AUMT-".');
+            inviteCodeInput.focus();
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}

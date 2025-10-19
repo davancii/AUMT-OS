@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import secrets
+import string
 
 # Load environment variables
 load_dotenv()
@@ -45,6 +47,22 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
+
+def check_admin_access():
+    """Check if user has admin access, logout HR users instead of redirecting to login"""
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    
+    user_role = session['user'].get('role')
+    if user_role == 'hr':
+        # Logout HR users who try to access admin routes
+        session.pop('user', None)
+        flash('Access denied. You have been logged out.', 'danger')
+        return redirect(url_for('login'))
+    elif user_role != 'admin':
+        return redirect(url_for('login'))
+    
+    return None
 
 # Email configuration
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
@@ -113,6 +131,8 @@ def login():
             
             if user_data.get('role') == 'admin':
                 return redirect(url_for('admin_dashboard'))
+            elif user_data.get('role') == 'hr':
+                return redirect(url_for('hr_dashboard'))
             else:
                 return redirect(url_for('member_dashboard'))
                 
@@ -130,8 +150,9 @@ def logout():
 
 @app.route('/admin')
 def admin_dashboard():
-    if 'user' not in session or session['user'].get('role') != 'admin':
-        return redirect(url_for('login'))
+    access_check = check_admin_access()
+    if access_check:
+        return access_check
     
     # Get all members
     members = []
@@ -171,7 +192,28 @@ def member_dashboard():
     if 'user' not in session:
         return redirect(url_for('login'))
     
-    user = session['user']
+    # Get fresh user data from database instead of using cached session data
+    try:
+        user_doc = db.collection('users').document(session['user']['uid']).get()
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            user = {
+                'uid': session['user']['uid'],
+                'email': user_data.get('email', ''),
+                'name': user_data.get('name', ''),
+                'role': user_data.get('role', 'member'),
+                'department': user_data.get('department', ''),
+                'academic_year': user_data.get('academic_year', ''),
+                'phone': user_data.get('phone', ''),
+                'points': user_data.get('points', 0)
+            }
+        else:
+            # Fallback to session data if user not found in database
+            user = session['user']
+    except Exception as e:
+        print(f"Error fetching user data: {str(e)}")
+        # Fallback to session data if there's an error
+        user = session['user']
     
     # Get all members to calculate rank
     members = []
@@ -231,15 +273,55 @@ def member_dashboard():
                          recent_points=recent_points,
                          recent_attendance=recent_attendance)
 
+@app.route('/hr')
+def hr_dashboard():
+    if 'user' not in session or session['user'].get('role') != 'hr':
+        return redirect(url_for('login'))
+    
+    # Get all members
+    members = []
+    members_ref = db.collection('users')
+    for doc in members_ref.stream():
+        member_data = doc.to_dict()
+        member_data['id'] = doc.id
+        members.append(member_data)
+    
+    # Sort members by points for ranking
+    members_sorted = sorted(members, key=lambda x: x.get('points', 0), reverse=True)
+    
+    # Add rank to each member
+    for i, member in enumerate(members_sorted):
+        member['rank'] = i + 1
+    
+    # Calculate some statistics
+    total_points = sum(member.get('points', 0) for member in members)
+    avg_points = round(total_points / len(members)) if members else 0
+    
+    # Get today's attendance count
+    today = datetime.now().strftime('%Y-%m-%d')
+    today_attendance = 0
+    attendance_ref = db.collection('attendance').where('date', '==', today)
+    for doc in attendance_ref.stream():
+        if doc.to_dict().get('status') == 'present':
+            today_attendance += 1
+    
+    return render_template('hr_dashboard.html', 
+                         members=members_sorted, 
+                         total_points=total_points,
+                         avg_points=avg_points,
+                         today_attendance=today_attendance)
+
 @app.route('/admin/add_member', methods=['POST'])
 def add_member():
-    if 'user' not in session or session['user'].get('role') != 'admin':
-        return redirect(url_for('login'))
+    access_check = check_admin_access()
+    if access_check:
+        return access_check
     
     name = request.form['name']
     email = request.form['email']
     phone = request.form['phone']
     department = request.form['department']
+    academic_year = request.form['academic_year']
     role = request.form['role']
     password = request.form['password']
     
@@ -259,6 +341,7 @@ def add_member():
             'email': email,
             'phone': phone,
             'department': department,
+            'academic_year': academic_year,
             'role': role,
             'points': 0,
             'password': password,  # Store password for authentication
@@ -276,15 +359,21 @@ def add_member():
 
 @app.route('/admin/remove_member/<user_id>', methods=['POST'])
 def remove_member(user_id):
-    if 'user' not in session or session['user'].get('role') != 'admin':
-        return redirect(url_for('login'))
+    access_check = check_admin_access()
+    if access_check:
+        return access_check
     
     try:
         # Delete from Firestore
         db.collection('users').document(user_id).delete()
         
-        # Delete from Firebase Auth
-        auth.delete_user(user_id)
+        # Try to delete from Firebase Auth (only if user exists there)
+        try:
+            auth.delete_user(user_id)
+        except Exception as auth_error:
+            # If user doesn't exist in Firebase Auth, that's fine
+            # This happens when users are created with custom password system
+            print(f"User {user_id} not found in Firebase Auth (this is normal for custom auth users): {str(auth_error)}")
         
         flash('Member removed successfully!')
     except Exception as e:
@@ -294,7 +383,7 @@ def remove_member(user_id):
 
 @app.route('/admin/update_points', methods=['POST'])
 def update_points():
-    if 'user' not in session or session['user'].get('role') != 'admin':
+    if 'user' not in session or session['user'].get('role') not in ['admin', 'hr']:
         return redirect(url_for('login'))
     
     user_id = request.form['user_id']
@@ -335,11 +424,15 @@ def update_points():
     except Exception as e:
         flash(f'Error updating points: {str(e)}')
     
-    return redirect(url_for('admin_dashboard'))
+    # Redirect based on user role
+    if session['user'].get('role') == 'hr':
+        return redirect(url_for('hr_dashboard'))
+    else:
+        return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/bulk_update_points', methods=['POST'])
 def bulk_update_points():
-    if 'user' not in session or session['user'].get('role') != 'admin':
+    if 'user' not in session or session['user'].get('role') not in ['admin', 'hr']:
         return redirect(url_for('login'))
     
     points_change = int(request.form['points_change'])
@@ -388,11 +481,15 @@ def bulk_update_points():
     except Exception as e:
         flash(f'Error updating points: {str(e)}')
     
-    return redirect(url_for('admin_dashboard'))
+    # Redirect based on user role
+    if session['user'].get('role') == 'hr':
+        return redirect(url_for('hr_dashboard'))
+    else:
+        return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/take_attendance', methods=['POST'])
 def take_attendance():
-    if 'user' not in session or session['user'].get('role') != 'admin':
+    if 'user' not in session or session['user'].get('role') not in ['admin', 'hr']:
         return redirect(url_for('login'))
     
     user_id = request.form['user_id']
@@ -416,7 +513,7 @@ def take_attendance():
 
 @app.route('/admin/bulk_attendance', methods=['POST'])
 def bulk_attendance():
-    if 'user' not in session or session['user'].get('role') != 'admin':
+    if 'user' not in session or session['user'].get('role') not in ['admin', 'hr']:
         return redirect(url_for('login'))
     
     attendance_date = request.form.get('attendance_date', datetime.now().strftime('%Y-%m-%d'))
@@ -461,11 +558,15 @@ def bulk_attendance():
     except Exception as e:
         flash(f'Error recording attendance: {str(e)}')
     
-    return redirect(url_for('admin_dashboard'))
+    # Redirect based on user role
+    if session['user'].get('role') == 'hr':
+        return redirect(url_for('hr_dashboard'))
+    else:
+        return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/send_warning', methods=['POST'])
 def send_warning():
-    if 'user' not in session or session['user'].get('role') != 'admin':
+    if 'user' not in session or session['user'].get('role') not in ['admin', 'hr']:
         return redirect(url_for('login'))
     
     user_id = request.form['user_id']
@@ -497,11 +598,15 @@ def send_warning():
     except Exception as e:
         flash(f'Error sending warning: {str(e)}')
     
-    return redirect(url_for('admin_dashboard'))
+    # Redirect based on user role
+    if session['user'].get('role') == 'hr':
+        return redirect(url_for('hr_dashboard'))
+    else:
+        return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/bulk_send_warning', methods=['POST'])
 def bulk_send_warning():
-    if 'user' not in session or session['user'].get('role') != 'admin':
+    if 'user' not in session or session['user'].get('role') not in ['admin', 'hr']:
         return redirect(url_for('login'))
     
     warning_message = request.form['warning_message']
@@ -541,12 +646,17 @@ def bulk_send_warning():
     except Exception as e:
         flash(f'Error sending warning emails: {str(e)}')
     
-    return redirect(url_for('admin_dashboard'))
+    # Redirect based on user role
+    if session['user'].get('role') == 'hr':
+        return redirect(url_for('hr_dashboard'))
+    else:
+        return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/create_admin', methods=['GET', 'POST'])
 def create_admin():
-    if 'user' not in session or session['user'].get('role') != 'admin':
-        return redirect(url_for('login'))
+    access_check = check_admin_access()
+    if access_check:
+        return access_check
     
     if request.method == 'POST':
         email = request.form['email']
@@ -587,9 +697,101 @@ def create_admin():
     
     return render_template('create_admin.html')
 
+@app.route('/admin/members')
+def members_page():
+    access_check = check_admin_access()
+    if access_check:
+        return access_check
+    
+    # Get search query
+    search_query = request.args.get('search', '').strip()
+    
+    # Get all members
+    members = []
+    members_ref = db.collection('users')
+    for doc in members_ref.stream():
+        member_data = doc.to_dict()
+        member_data['id'] = doc.id
+        members.append(member_data)
+    
+    # Filter members based on search query
+    if search_query:
+        filtered_members = []
+        search_lower = search_query.lower()
+        for member in members:
+            if (search_lower in member.get('name', '').lower() or 
+                search_lower in member.get('email', '').lower()):
+                filtered_members.append(member)
+        members = filtered_members
+    
+    # Sort members by points for ranking
+    members_sorted = sorted(members, key=lambda x: x.get('points', 0), reverse=True)
+    
+    # Add rank to each member
+    for i, member in enumerate(members_sorted):
+        member['rank'] = i + 1
+    
+    return render_template('members.html', 
+                         members=members_sorted, 
+                         search_query=search_query)
+
+@app.route('/admin/export_members')
+def export_members():
+    """Export all members to CSV"""
+    access_check = check_admin_access()
+    if access_check:
+        return access_check
+    
+    try:
+        # Get all members
+        members = []
+        members_ref = db.collection('users')
+        for doc in members_ref.stream():
+            member_data = doc.to_dict()
+            member_data['id'] = doc.id
+            members.append(member_data)
+        
+        # Sort members by points for ranking
+        members_sorted = sorted(members, key=lambda x: x.get('points', 0), reverse=True)
+        
+        # Add rank to each member
+        for i, member in enumerate(members_sorted):
+            member['rank'] = i + 1
+        
+        # Create CSV content
+        csv_content = "Rank,Name,Email,Phone,Department,Academic Year,Role,Points,Created At\n"
+        
+        for member in members_sorted:
+            # Clean and format data
+            rank = str(member.get('rank', 'N/A'))
+            name = str(member.get('name', 'N/A')).replace('"', '""')
+            email = str(member.get('email', 'N/A')).replace('"', '""')
+            phone = str(member.get('phone', 'N/A')).replace('"', '""')
+            department = str(member.get('department', 'N/A')).replace('"', '""')
+            academic_year = str(member.get('academic_year', 'N/A')).replace('"', '""')
+            role = str(member.get('role', 'N/A')).replace('"', '""')
+            points = str(member.get('points', 0))
+            created_at = str(member.get('created_at', 'N/A'))
+            
+            # Add row to CSV
+            csv_content += f'"{rank}","{name}","{email}","{phone}","{department}","{academic_year}","{role}","{points}","{created_at}"\n'
+        
+        # Create response
+        from flask import Response
+        response = Response(
+            csv_content,
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename=aumt-members-{datetime.now().strftime("%Y-%m-%d")}.csv'}
+        )
+        return response
+        
+    except Exception as e:
+        flash(f'Error exporting members: {str(e)}')
+        return redirect(url_for('members_page'))
+
 @app.route('/admin/member/<user_id>')
 def member_details(user_id):
-    if 'user' not in session or session['user'].get('role') != 'admin':
+    if 'user' not in session or session['user'].get('role') not in ['admin', 'hr']:
         return redirect(url_for('login'))
     
     try:
@@ -632,6 +834,180 @@ def member_details(user_id):
     except Exception as e:
         flash(f'Error loading member details: {str(e)}')
         return redirect(url_for('admin_dashboard'))
+
+def generate_invite_code():
+    """Generate a secure invite code with AUMT prefix"""
+    random_part = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+    return f"AUMT-{random_part}"
+
+@app.route('/admin/invite_codes')
+def invite_codes():
+    access_check = check_admin_access()
+    if access_check:
+        return access_check
+    
+    # Get all invite codes
+    invite_codes = []
+    codes_ref = db.collection('invite_codes')
+    for doc in codes_ref.stream():
+        code_data = doc.to_dict()
+        code_data['id'] = doc.id
+        invite_codes.append(code_data)
+    
+    # Sort by creation date (newest first)
+    invite_codes.sort(key=lambda x: x.get('created_at', datetime.min), reverse=True)
+    
+    return render_template('invite_codes.html', invite_codes=invite_codes)
+
+@app.route('/admin/generate_invite_code', methods=['POST'])
+def generate_invite_code_route():
+    if 'user' not in session or session['user'].get('role') != 'admin':
+        return redirect(url_for('login'))
+    
+    try:
+        # Get number of codes to generate (default to 1)
+        num_codes = int(request.form.get('num_codes', 1))
+        
+        # Limit to reasonable number (max 50 at once)
+        if num_codes > 50:
+            flash('Cannot generate more than 50 codes at once!')
+            return redirect(url_for('invite_codes'))
+        
+        if num_codes < 1:
+            flash('Must generate at least 1 code!')
+            return redirect(url_for('invite_codes'))
+        
+        generated_codes = []
+        
+        for i in range(num_codes):
+            # Generate unique invite code
+            invite_code = generate_invite_code()
+            
+            # Check if code already exists (very unlikely but safe)
+            while True:
+                existing_codes = db.collection('invite_codes').where('code', '==', invite_code).limit(1).get()
+                if not existing_codes:
+                    break
+                invite_code = generate_invite_code()
+            
+            # Create invite code document
+            code_data = {
+                'code': invite_code,
+                'created_by': session['user']['uid'],
+                'created_at': datetime.now(),
+                'used': False,
+                'used_by': None,
+                'used_at': None
+            }
+            
+            db.collection('invite_codes').add(code_data)
+            generated_codes.append(invite_code)
+        
+        if num_codes == 1:
+            flash(f'Invite code generated successfully: {generated_codes[0]}')
+        else:
+            flash(f'{num_codes} invite codes generated successfully!')
+        
+    except ValueError:
+        flash('Invalid number of codes specified!')
+    except Exception as e:
+        flash(f'Error generating invite codes: {str(e)}')
+    
+    return redirect(url_for('invite_codes'))
+
+@app.route('/admin/delete_invite_code/<code_id>', methods=['POST'])
+def delete_invite_code(code_id):
+    access_check = check_admin_access()
+    if access_check:
+        return access_check
+    
+    try:
+        # Check if code is already used
+        code_doc = db.collection('invite_codes').document(code_id).get()
+        if code_doc.exists:
+            code_data = code_doc.to_dict()
+            if code_data.get('used', False):
+                flash('Cannot delete used invite code!')
+            else:
+                db.collection('invite_codes').document(code_id).delete()
+                flash('Invite code deleted successfully!')
+        else:
+            flash('Invite code not found!')
+            
+    except Exception as e:
+        flash(f'Error deleting invite code: {str(e)}')
+    
+    return redirect(url_for('invite_codes'))
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        phone = request.form['phone']
+        department = request.form['department']
+        academic_year = request.form['academic_year']
+        password = request.form['password']
+        invite_code = request.form['invite_code']
+        
+        try:
+            # Validate invite code
+            codes_ref = db.collection('invite_codes')
+            query = codes_ref.where('code', '==', invite_code.upper()).limit(1)
+            codes = query.get()
+            
+            if not codes:
+                flash('Invalid invite code!')
+                return render_template('signup.html')
+            
+            code_doc = codes[0]
+            code_data = code_doc.to_dict()
+            
+            if code_data.get('used', False):
+                flash('This invite code has already been used!')
+                return render_template('signup.html')
+            
+            # Check if user already exists
+            users_ref = db.collection('users')
+            query = users_ref.where('email', '==', email).limit(1)
+            existing_users = query.get()
+            
+            if existing_users:
+                flash('A user with this email already exists!')
+                return render_template('signup.html')
+            
+            # Create user
+            user_data = {
+                'name': name,
+                'email': email,
+                'phone': phone,
+                'department': department,
+                'academic_year': academic_year,
+                'role': 'member',
+                'points': 0,
+                'password': password,
+                'created_at': datetime.now()
+            }
+            
+            # Add user to Firestore
+            user_ref = db.collection('users').add(user_data)
+            user_id = user_ref[1].id
+            
+            # Mark invite code as used
+            db.collection('invite_codes').document(code_doc.id).update({
+                'used': True,
+                'used_by': user_id,
+                'used_at': datetime.now()
+            })
+            
+            flash('Account created successfully! You can now login.', 'success')
+            return redirect(url_for('login'))
+            
+        except Exception as e:
+            flash(f'Error creating account: {str(e)}')
+            return render_template('signup.html')
+    
+    return render_template('signup.html')
 
 def send_warning_email(to_email, user_name, message):
     """Send warning email to user"""
@@ -696,7 +1072,7 @@ def check_automatic_warning(user_id, new_points, user_name, user_email):
     """
     try:
         # Check if points are 50 or below
-        if new_points <= 50:
+        if new_points <= 60:
             # Check if we've already sent a warning for this user recently (within last 24 hours)
             # Get all automatic warnings for this user and sort in Python to avoid index requirements
             warning_logs = db.collection('warning_logs').where('user_id', '==', user_id).where('type', '==', 'automatic').get()
