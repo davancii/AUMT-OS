@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance - AUMT OS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar p-0">
+            <div class="p-3">
+                <div class="text-center mb-4">
+                    <img src="{{ url_for('static', filename='AUMT NEW Logo 2025 - Transparent.png') }}" alt="AUMT Logo" style="width: 50px; height: 50px; margin-bottom: 10px;">
+                    <h4 class="text-white mb-1" style="color: var(--aumt-light-gold);">AUMT OS</h4>
+                    <small style="color: var(--aumt-white);">{% if session.user.role == 'hr' %}HR Dashboard{% else %}Admin Dashboard{% endif %}</small>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link text-white" href="{% if session.user.role == 'hr' %}{{ url_for('hr_dashboard') }}{% else %}{{ url_for('admin_dashboard') }}{% endif %}">
+                        <i class="fas fa-home me-2"></i>Dashboard
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('members_page') }}">
+                        <i class="fas fa-users me-2"></i>Members
+                    </a>
+                    {% if session.user.role == 'admin' %}
+                    <a class="nav-link text-white" href="{{ url_for('invite_codes') }}">
+                        <i class="fas fa-ticket-alt me-2"></i>Invite Codes
+                    </a>
+                    {% endif %}
+                    <a class="nav-link text-white active" href="{{ url_for('attendance_page') }}">
+                        <i class="fas fa-calendar-check me-2"></i>Attendance
+                    </a>
+                    <a class="nav-link text-white" href="#points">
+                        <i class="fas fa-star me-2"></i>Points
+                    </a>
+                </nav>
+            </div>
+            <div class="mt-auto p-3">
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light w-100">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-calendar-check me-2"></i>
+                    Attendance
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportAttendance()">
+                            <i class="fas fa-download me-1"></i>
+                            Export CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Date Selector -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-calendar me-2"></i>
+                                Select Date
+                            </h5>
+                            <form method="GET" class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="date" class="form-label">Choose Date</label>
+                                    <input type="date" class="form-control" id="date" name="date" value="{{ selected_date }}" max="{{ available_dates[0] }}">
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search me-1"></i>
+                                        View Attendance
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance Summary -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            <h4>{{ total_present }}</h4>
+                            <p class="mb-0">Present</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-times-circle fa-2x mb-2"></i>
+                            <h4>{{ total_absent }}</h4>
+                            <p class="mb-0">Absent</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users fa-2x mb-2"></i>
+                            <h4>{{ total_members }}</h4>
+                            <p class="mb-0">Total Members</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-percentage fa-2x mb-2"></i>
+                            <h4>{{ "%.1f"|format((total_present / total_members * 100) if total_members > 0 else 0) }}%</h4>
+                            <p class="mb-0">Attendance Rate</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Present Members -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-check-circle me-2"></i>
+                                Present Members ({{ total_present }})
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if present_members %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Department</th>
+                                            <th>Academic Year</th>
+                                            <th>Role</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for member in present_members %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ member.name }}</strong>
+                                            </td>
+                                            <td>{{ member.email }}</td>
+                                            <td>{{ member.department }}</td>
+                                            <td>
+                                                <span class="badge bg-info">{{ member.academic_year }}</span>
+                                            </td>
+                                            <td>
+                                                {% if member.role == 'admin' %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-shield-alt me-1"></i>Admin
+                                                    </span>
+                                                {% elif member.role == 'hr' %}
+                                                    <span class="badge bg-warning">
+                                                        <i class="fas fa-user-tie me-1"></i>HR
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-primary">
+                                                        <i class="fas fa-user me-1"></i>Member
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-check-circle fa-3x mb-3"></i>
+                                <p>No members were present on {{ selected_date }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Absent Members -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-times-circle me-2"></i>
+                                Absent Members ({{ total_absent }})
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if absent_members %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Department</th>
+                                            <th>Academic Year</th>
+                                            <th>Role</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for member in absent_members %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ member.name }}</strong>
+                                            </td>
+                                            <td>{{ member.email }}</td>
+                                            <td>{{ member.department }}</td>
+                                            <td>
+                                                <span class="badge bg-info">{{ member.academic_year }}</span>
+                                            </td>
+                                            <td>
+                                                {% if member.role == 'admin' %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-shield-alt me-1"></i>Admin
+                                                    </span>
+                                                {% elif member.role == 'hr' %}
+                                                    <span class="badge bg-warning">
+                                                        <i class="fas fa-user-tie me-1"></i>HR
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-primary">
+                                                        <i class="fas fa-user me-1"></i>Member
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-times-circle fa-3x mb-3"></i>
+                                <p>All members were present on {{ selected_date }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+function exportAttendance() {
+    // Get current date from the form
+    const selectedDate = document.getElementById('date').value;
+    
+    // Create CSV content
+    let csvContent = "Name,Email,Department,Academic Year,Role,Status\n";
+    
+    // Add present members
+    {% for member in present_members %}
+    csvContent += "{{ member.name|replace('"', '""') }},{{ member.email }},{{ member.department }},{{ member.academic_year }},{{ member.role }},Present\n";
+    {% endfor %}
+    
+    // Add absent members
+    {% for member in absent_members %}
+    csvContent += "{{ member.name|replace('"', '""') }},{{ member.email }},{{ member.department }},{{ member.academic_year }},{{ member.role }},Absent\n";
+    {% endfor %}
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `attendance_${selectedDate}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+{% endblock %}

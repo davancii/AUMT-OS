@@ -3,7 +3,7 @@ import firebase_admin
 from firebase_admin import credentials, auth, firestore
 import os
 from dotenv import load_dotenv
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -1124,6 +1124,71 @@ def check_automatic_warning(user_id, new_points, user_name, user_email):
     except Exception as e:
         print(f"Error checking automatic warning: {str(e)}")
         return False
+
+@app.route('/admin/attendance')
+def attendance_page():
+    if 'user' not in session or session['user'].get('role') not in ['admin', 'hr']:
+        return redirect(url_for('login'))
+    
+    # Get selected date from query parameters, default to today
+    selected_date = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
+    
+    try:
+        # Get all members
+        members = []
+        members_docs = db.collection('users').stream()
+        for doc in members_docs:
+            member_data = doc.to_dict()
+            member_data['uid'] = doc.id
+            members.append(member_data)
+        
+        # Get attendance records for the selected date
+        attendance_records = {}
+        attendance_docs = db.collection('attendance').where('date', '==', selected_date).stream()
+        for doc in attendance_docs:
+            attendance_data = doc.to_dict()
+            attendance_records[attendance_data['user_id']] = attendance_data['status']
+        
+        # Separate present and absent members
+        present_members = []
+        absent_members = []
+        
+        for member in members:
+            if member['uid'] in attendance_records:
+                if attendance_records[member['uid']] == 'present':
+                    present_members.append(member)
+                else:
+                    absent_members.append(member)
+            else:
+                # Members without attendance records are considered absent
+                absent_members.append(member)
+        
+        # Sort members by name
+        present_members.sort(key=lambda x: x.get('name', ''))
+        absent_members.sort(key=lambda x: x.get('name', ''))
+        
+        # Get available dates for the date picker (last 30 days)
+        available_dates = []
+        for i in range(30):
+            date = datetime.now() - timedelta(days=i)
+            available_dates.append(date.strftime('%Y-%m-%d'))
+        
+        return render_template('attendance.html', 
+                             selected_date=selected_date,
+                             present_members=present_members,
+                             absent_members=absent_members,
+                             total_present=len(present_members),
+                             total_absent=len(absent_members),
+                             total_members=len(members),
+                             available_dates=available_dates)
+    
+    except Exception as e:
+        print(f"Error in attendance_page: {str(e)}")
+        flash('Error loading attendance data', 'error')
+        if session['user'].get('role') == 'hr':
+            return redirect(url_for('hr_dashboard'))
+        else:
+            return redirect(url_for('admin_dashboard'))
 
 
 if __name__ == '__main__':
