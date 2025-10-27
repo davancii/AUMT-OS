@@ -703,24 +703,43 @@ def members_page():
     if access_check:
         return access_check
     
-    # Get search query
+    # Get search query and department filter
     search_query = request.args.get('search', '').strip()
+    department_filter = request.args.get('department', '').strip()
     
-    # Get all members
+    # Get all members and collect unique departments (excluding admin users)
     members = []
+    departments = set()
     members_ref = db.collection('users')
     for doc in members_ref.stream():
         member_data = doc.to_dict()
         member_data['id'] = doc.id
         members.append(member_data)
+        # Collect unique departments (normalized) - exclude admin users
+        if member_data.get('department') and member_data.get('role') != 'admin':
+            # Normalize department name (trim spaces and convert to title case)
+            dept = member_data.get('department').strip().title()
+            departments.add(dept)
     
-    # Filter members based on search query
-    if search_query:
+    # Filter members based on search query and department
+    if search_query or department_filter:
         filtered_members = []
-        search_lower = search_query.lower()
+        search_lower = search_query.lower() if search_query else ''
         for member in members:
-            if (search_lower in member.get('name', '').lower() or 
-                search_lower in member.get('email', '').lower()):
+            # Check search query (name or email)
+            search_match = True
+            if search_query:
+                search_match = (search_lower in member.get('name', '').lower() or 
+                               search_lower in member.get('email', '').lower())
+            
+            # Check department filter (case-insensitive)
+            dept_match = True
+            if department_filter:
+                member_dept = member.get('department', '').strip().title()
+                filter_dept = department_filter.strip().title()
+                dept_match = member_dept == filter_dept
+            
+            if search_match and dept_match:
                 filtered_members.append(member)
         members = filtered_members
     
@@ -733,7 +752,9 @@ def members_page():
     
     return render_template('members.html', 
                          members=members_sorted, 
-                         search_query=search_query)
+                         search_query=search_query,
+                         department_filter=department_filter,
+                         departments=sorted(list(departments)))
 
 @app.route('/admin/export_members')
 def export_members():
