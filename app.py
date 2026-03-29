@@ -245,7 +245,7 @@ def member_dashboard():
     
     # Get recent points activity
     recent_points = []
-    points_ref = db.collection('point_logs').where('user_id', '==', user['uid']).limit(5)
+    points_ref = db.collection('point_logs').where('user_id', '==', user['uid']).limit(30)
     for doc in points_ref.stream():
         points_data = doc.to_dict()
         points_data['id'] = doc.id
